@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Throne Room — Find & Rate Bathrooms</title>
+
+  <!-- Leaflet CSS: The map library's styles -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Leaflet JS: The actual map library -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- App icon for when someone saves it to their phone home screen -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚽</text></svg>">
+
+  <!-- Makes it feel like a native app on iOS/Android -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Throne Room">
+  <meta name="theme-color" content="#6366f1">
+
+  <style>
+    /* ============================================================
+       CSS (Cascading Style Sheets) controls how things LOOK.
+       Each rule has a "selector" (what to style) and properties.
+
+       Example:
+         .my-class { color: red; font-size: 16px; }
+       This makes anything with class="my-class" red and 16px.
+    ============================================================ */
+
+    /* Reset & Base Styles */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      overflow: hidden;          /* Prevent page-level scrolling */
+      height: 100vh;             /* Full screen height */
+      height: 100dvh;            /* Dynamic viewport height (better on mobile) */
+    }
+
+    /* The app container — centered, phone-width, full height */
+    #app {
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;    /* Stack children vertically */
+      background: #f8fafc;
+      position: relative;
+    }
+
+    /* ---- HEADER ---- */
+    .header {
+      background: white;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      flex-shrink: 0;            /* Don't let header shrink */
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .app-title { font-size: 20px; font-weight: 800; }
+    .app-subtitle { font-size: 11px; color: #94a3b8; }
+
+    .add-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: #6366f1;
+      color: white;
+      border: none;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+      transition: background 0.2s;
+    }
+    .add-btn:hover { background: #4f46e5; }
+
+    /* ---- SEARCH BAR ---- */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 8px 16px 8px 36px;
+      border: none;
+      border-radius: 50px;
+      background: #f1f5f9;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-input:focus { box-shadow: 0 0 0 2px rgba(99,102,241,0.3); }
+
+    /* ---- TAB SWITCHER ---- */
+    .tabs {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 50px;
+      padding: 3px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 7px;
+      border: none;
+      border-radius: 50px;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: white;
+      color: #1e293b;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* ---- MAIN CONTENT AREA ---- */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;  /* Smooth scrolling on iOS */
+    }
+
+    /* ---- MAP ---- */
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 300px;
+    }
+    .map-container { padding: 12px; height: 100%; }
+    .map-wrap {
+      border-radius: 16px;
+      overflow: hidden;
+      height: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* Custom map marker popup styles */
+    .bathroom-popup { text-align: center; min-width: 160px; }
+    .bathroom-popup h3 { font-size: 14px; margin-bottom: 4px; }
+    .bathroom-popup .location { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+    .bathroom-popup .rating-big { font-size: 24px; font-weight: 800; }
+    .bathroom-popup .view-btn {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 5px 16px;
+      background: #6366f1;
+      color: white;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+    }
+    .bathroom-popup .view-btn:hover { background: #4f46e5; }
+
+    /* ---- BATHROOM LIST CARDS ---- */
+    .list-container { padding: 12px; }
+    .sort-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .sort-btn {
+      padding: 4px 10px;
+      border: none;
+      border-radius: 50px;
+      background: transparent;
+      font-size: 12px;
+      cursor: pointer;
+      color: #94a3b8;
+      transition: all 0.2s;
+    }
+    .sort-btn.active { background: #e0e7ff; color: #4338ca; font-weight: 600; }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      transition: box-shadow 0.2s;
+      border: none;
+      width: 100%;
+      text-align: left;
+    }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+    .card-rating {
+      font-size: 22px;
+      font-weight: 800;
+      width: 48px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .card-info { flex: 1; min-width: 0; }
+    .card-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-location { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-stars { font-size: 11px; color: #f59e0b; margin-top: 3px; }
+    .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+    .card-arrow { color: #cbd5e1; font-size: 18px; flex-shrink: 0; }
+
+    /* ---- TAGS ---- */
+    .tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 50px;
+      font-weight: 600;
+    }
+    .tag-public { background: #dbeafe; color: #1d4ed8; }
+    .tag-free { background: #dcfce7; color: #15803d; }
+    .tag-accessible { background: #f3e8ff; color: #7c3aed; }
+    .tag-hotel { background: #fef3c7; color: #b45309; }
+    .tag-bougie { background: #fce7f3; color: #be185d; }
+    .tag-transit { background: #cffafe; color: #0e7490; }
+    .tag-store { background: #ffedd5; color: #c2410c; }
+    .tag-family-friendly { background: #ccfbf1; color: #0f766e; }
+    .tag-legendary { background: #fef9c3; color: #a16207; }
+
+    /* ---- DETAIL VIEW ---- */
+    .detail-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .detail-header {
+      background: white;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .back-btn {
+      font-size: 24px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #94a3b8;
+      padding: 0;
+      line-height: 1;
+    }
+    .back-btn:hover { color: #475569; }
+    .detail-title { flex: 1; min-width: 0; }
+    .detail-title h2 { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .detail-title p { font-size: 11px; color: #64748b; }
+    .detail-score { text-align: right; }
+    .detail-score .score { font-size: 28px; font-weight: 800; }
+    .detail-score .count { font-size: 11px; }
+
+    .detail-content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 20px;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 12px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .stat-icon { font-size: 20px; }
+    .stat-value { font-size: 18px; font-weight: 800; color: #1e293b; }
+    .stat-label { font-size: 11px; color: #64748b; }
+
+    .detail-tags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 0 12px 10px;
+    }
+    .detail-hours { font-size: 11px; color: #94a3b8; margin-left: auto; }
+
+    /* Reviews section */
+    .reviews-section { padding: 0 12px; }
+    .reviews-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .reviews-header h3 { font-size: 15px; font-weight: 700; }
+
+    .add-review-btn {
+      padding: 6px 16px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .add-review-btn:hover { background: #4f46e5; }
+
+    /* Review form */
+    .review-form {
+      background: white;
+      border: 2px solid #e0e7ff;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      margin-bottom: 10px;
+    }
+    .form-input:focus { box-shadow: 0 0 0 2px rgba(99,102,241,0.3); border-color: #a5b4fc; }
+
+    textarea.form-input { height: 70px; resize: none; }
+
+    .star-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .star-label { font-size: 13px; color: #475569; width: 110px; }
+    .star-buttons { display: flex; gap: 4px; }
+    .star-btn {
+      font-size: 26px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #d1d5db;
+      transition: transform 0.1s;
+      padding: 0 2px;
+    }
+    .star-btn:active { transform: scale(1.3); }
+    .star-btn.active { color: #f59e0b; }
+
+    .photo-upload-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #6366f1;
+      cursor: pointer;
+      margin: 8px 0;
+    }
+    .photo-upload-label:hover { color: #4f46e5; }
+    .photo-previews { display: flex; gap: 8px; overflow-x: auto; margin: 6px 0; }
+    .photo-preview {
+      width: 60px; height: 60px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .photo-preview-wrap { position: relative; flex-shrink: 0; }
+    .photo-remove {
+      position: absolute;
+      top: -4px; right: -4px;
+      width: 20px; height: 20px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 10px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .submit-btn:hover { background: #4f46e5; }
+    .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Review cards */
+    .review-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .review-top {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .review-user { font-size: 13px; font-weight: 600; }
+    .review-date { font-size: 11px; color: #94a3b8; }
+    .review-scores { display: flex; gap: 10px; font-size: 11px; color: #64748b; margin-bottom: 6px; }
+    .review-comment { font-size: 13px; color: #334155; line-height: 1.5; }
+    .review-photos { display: flex; gap: 8px; margin-top: 8px; }
+    .review-photo { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; }
+
+    /* ---- ADD BATHROOM VIEW ---- */
+    .add-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .add-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 5px;
+    }
+    .tag-select { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag-toggle {
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 50px;
+      border: 2px solid transparent;
+      background: #f8fafc;
+      color: #94a3b8;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .tag-toggle.active { border-color: currentColor; }
+
+    .locate-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: #f0fdf4;
+      color: #15803d;
+      border: 2px solid #bbf7d0;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      justify-content: center;
+      margin-top: 6px;
+    }
+    .locate-btn:hover { background: #dcfce7; }
+    .locate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .location-note {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    .big-submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .big-submit-btn:hover { background: #4f46e5; }
+    .big-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ---- EMPTY STATE ---- */
+    .empty-state { text-align: center; padding: 48px 16px; color: #94a3b8; }
+    .empty-state .emoji { font-size: 48px; margin-bottom: 8px; }
+
+    /* Color helpers for ratings */
+    .color-green { color: #10b981; }
+    .color-amber { color: #f59e0b; }
+    .color-orange { color: #f97316; }
+    .color-red { color: #ef4444; }
+
+    /* ---- LEAFLET CUSTOM MARKER ---- */
+    .custom-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-size: 16px;
+      width: 36px;
+      height: 36px;
+    }
+
+    /* ---- TOAST NOTIFICATION ---- */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ============================================================================
+// THRONE ROOM - JavaScript Application
+// ============================================================================
+//
+// HOW THIS WORKS:
+// Since we're building without React (to keep deployment simple), this uses
+// plain JavaScript to manage the app. The approach is:
+//   1. Store all data in JavaScript variables
+//   2. When something changes, re-render the affected part of the page
+//   3. Save data to localStorage so it persists between visits
+//
+// localStorage is built into every browser — it stores data as text on the
+// user's device. It's like a tiny database that lives in the browser.
+// Limitation: each person sees only their own data. In a future version,
+// we'd add a real server/database so everyone shares the same data.
+// ============================================================================
+
+
+// ============================================================================
+// DATA
+// ============================================================================
+
+// Load saved bathrooms from localStorage, or use sample data if none exist.
+// JSON.parse converts a text string back into a JavaScript object.
+// JSON.stringify converts an object into a text string (for saving).
+// Think of it like Python's json.loads() and json.dumps().
+
+const DEFAULT_BATHROOMS = [
+  {
+    id: 1,
+    name: "Bryant Park Restroom",
+    location: "Between 5th & 6th Ave, NYC",
+    lat: 40.7536,
+    lng: -73.9832,
+    ratings: [
+      { user: "Jamie F.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "The BEST public bathroom in NYC. Fresh flowers, attendant, classical music!", date: "2026-03-23", photos: [] },
+      { user: "Quinn D.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "I didn't know public restrooms could be this nice.", date: "2026-03-20", photos: [] },
+      { user: "Avery N.", cleanliness: 5, accessibility: 4, vibe: 5, comment: "A religious experience. 10/10.", date: "2026-03-17", photos: [] },
+    ],
+    tags: ["public", "free", "accessible", "legendary"],
+    hours: "7am - 11pm",
+  },
+  {
+    id: 2,
+    name: "The Ace Hotel Lobby",
+    location: "20 W 29th St, NYC",
+    lat: 40.7454,
+    lng: -73.9882,
+    ratings: [
+      { user: "Jordan R.", cleanliness: 5, accessibility: 4, vibe: 5, comment: "Aesthetic AF. Great vibes, smells like eucalyptus.", date: "2026-03-22", photos: [] },
+      { user: "Riley T.", cleanliness: 5, accessibility: 4, vibe: 5, comment: "My go-to. Nobody questions you walking in.", date: "2026-03-15", photos: [] },
+      { user: "Casey L.", cleanliness: 4, accessibility: 4, vibe: 5, comment: "Bougie bathroom energy. Love it.", date: "2026-03-10", photos: [] },
+    ],
+    tags: ["hotel", "free", "bougie"],
+    hours: "24/7",
+  },
+  {
+    id: 3,
+    name: "Central Park Restroom",
+    location: "Near Bethesda Fountain, NYC",
+    lat: 40.7736,
+    lng: -73.9712,
+    ratings: [
+      { user: "Alex M.", cleanliness: 4, accessibility: 5, vibe: 4, comment: "Surprisingly clean for a park bathroom. Well maintained!", date: "2026-03-20", photos: [] },
+      { user: "Sam K.", cleanliness: 3, accessibility: 5, vibe: 3, comment: "Decent. Gets crowded on weekends.", date: "2026-03-18", photos: [] },
+    ],
+    tags: ["public", "free", "accessible"],
+    hours: "6am - 10pm",
+  },
+  {
+    id: 4,
+    name: "Grand Central Terminal",
+    location: "Lower Level East Side, NYC",
+    lat: 40.7527,
+    lng: -73.9772,
+    ratings: [
+      { user: "Morgan W.", cleanliness: 3, accessibility: 3, vibe: 2, comment: "It works in a pinch. Can be hectic during rush hour.", date: "2026-03-21", photos: [] },
+    ],
+    tags: ["public", "free", "transit"],
+    hours: "5:15am - 2am",
+  },
+  {
+    id: 5,
+    name: "Whole Foods Columbus Circle",
+    location: "10 Columbus Circle, NYC",
+    lat: 40.7685,
+    lng: -73.9822,
+    ratings: [
+      { user: "Taylor B.", cleanliness: 4, accessibility: 4, vibe: 3, comment: "Clean and reliable. The line can be long at lunch.", date: "2026-03-19", photos: [] },
+      { user: "Drew P.", cleanliness: 4, accessibility: 5, vibe: 3, comment: "Solid choice. Family restroom available too.", date: "2026-03-14", photos: [] },
+    ],
+    tags: ["store", "free", "family-friendly"],
+    hours: "7am - 10pm",
+  },
+  {
+    id: 6,
+    name: "Pike Place Market Restroom",
+    location: "85 Pike St, Seattle",
+    lat: 47.6097,
+    lng: -122.3425,
+    ratings: [
+      { user: "Chris H.", cleanliness: 3, accessibility: 3, vibe: 3, comment: "Busy but functional. Better than most tourist spots.", date: "2026-03-19", photos: [] },
+    ],
+    tags: ["public", "free", "transit"],
+    hours: "6am - 6pm",
+  },
+  {
+    id: 7,
+    name: "The Broad Museum",
+    location: "221 S Grand Ave, Los Angeles",
+    lat: 34.0544,
+    lng: -118.2508,
+    ratings: [
+      { user: "Mika T.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "Museum-quality bathroom. Literally. Spotless.", date: "2026-03-18", photos: [] },
+      { user: "Leo R.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "Super clean. The building architecture makes you feel fancy just washing your hands.", date: "2026-03-12", photos: [] },
+    ],
+    tags: ["free", "accessible", "bougie"],
+    hours: "10am - 5pm",
+  },
+];
+
+// Load data from localStorage or use defaults
+function loadBathrooms() {
+  try {
+    const saved = localStorage.getItem("throneroom_bathrooms");
+    if (saved) return JSON.parse(saved);
+  } catch (e) { /* ignore errors */ }
+  return DEFAULT_BATHROOMS;
+}
+
+function saveBathrooms() {
+  try {
+    localStorage.setItem("throneroom_bathrooms", JSON.stringify(state.bathrooms));
+  } catch (e) { /* ignore errors */ }
+}
+
+
+// ============================================================================
+// APP STATE
+// ============================================================================
+// All the data that drives the app lives in this one object.
+// When we change something, we update this object and then re-render.
+
+const state = {
+  bathrooms: loadBathrooms(),
+  view: "home",           // "home", "detail", or "add"
+  selectedId: null,       // ID of the bathroom being viewed
+  tab: "map",             // "map" or "list"
+  searchQuery: "",
+  sortBy: "rating",       // "rating", "reviews", or "name"
+  showReviewForm: false,
+  // Review form fields
+  reviewName: "",
+  reviewComment: "",
+  reviewCleanliness: 0,
+  reviewAccessibility: 0,
+  reviewVibe: 0,
+  reviewPhotos: [],
+  // Add bathroom form
+  newName: "",
+  newLocation: "",
+  newHours: "",
+  newTags: [],
+  newLat: null,
+  newLng: null,
+  locating: false,
+};
+
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function getAvg(ratings, field) {
+  if (!ratings.length) return 0;
+  return ratings.reduce((sum, r) => sum + r[field], 0) / ratings.length;
+}
+
+function getOverallAvg(ratings) {
+  if (!ratings.length) return 0;
+  return (getAvg(ratings, "cleanliness") + getAvg(ratings, "accessibility") + getAvg(ratings, "vibe")) / 3;
+}
+
+function getRatingColor(avg) {
+  if (avg >= 4.5) return "color-green";
+  if (avg >= 3.5) return "color-amber";
+  if (avg >= 2.5) return "color-orange";
+  return "color-red";
+}
+
+function getRatingHex(avg) {
+  if (avg >= 4.5) return "#10b981";
+  if (avg >= 3.5) return "#f59e0b";
+  if (avg >= 2.5) return "#f97316";
+  return "#ef4444";
+}
+
+function starsHTML(rating) {
+  const full = Math.floor(rating);
+  const half = rating - full >= 0.25 && rating - full < 0.75;
+  const empty = 5 - full - (half ? 1 : 0);
+  return "★".repeat(full) + (half ? '<span style="opacity:0.6">★</span>' : '') + '<span style="opacity:0.2">' + "★".repeat(Math.max(0,empty)) + '</span>';
+}
+
+function tagHTML(tag) {
+  return `<span class="tag tag-${tag}">${tag}</span>`;
+}
+
+function getFiltered() {
+  let list = [...state.bathrooms];
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    list = list.filter(b =>
+      b.name.toLowerCase().includes(q) ||
+      b.location.toLowerCase().includes(q) ||
+      b.tags.some(t => t.includes(q))
+    );
+  }
+  if (state.sortBy === "rating") list.sort((a, b) => getOverallAvg(b.ratings) - getOverallAvg(a.ratings));
+  else if (state.sortBy === "reviews") list.sort((a, b) => b.ratings.length - a.ratings.length);
+  else list.sort((a, b) => a.name.localeCompare(b.name));
+  return list;
+}
+
+function showToast(message) {
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2500);
+}
+
+function todayStr() {
+  return new Date().toISOString().split("T")[0];
+}
+
+
+// ============================================================================
+// MAP MANAGEMENT
+// ============================================================================
+// We keep the Leaflet map instance and markers so we can update them
+// without recreating the whole map every time.
+
+let leafletMap = null;
+let mapMarkers = [];
+
+function initMap() {
+  // If map already exists, just update markers
+  if (leafletMap) {
+    updateMapMarkers();
+    return;
+  }
+
+  const mapEl = document.getElementById("map");
+  if (!mapEl) return;
+
+  // Create the Leaflet map
+  leafletMap = L.map("map", {
+    zoomControl: true,
+    attributionControl: true,
+  }).setView([40.758, -73.98], 13);  // Default: midtown Manhattan
+
+  // Add the map tiles (the actual map images) from OpenStreetMap — free!
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(leafletMap);
+
+  updateMapMarkers();
+
+  // Fit map to show all markers
+  fitMapToMarkers();
+}
+
+function updateMapMarkers() {
+  if (!leafletMap) return;
+
+  // Remove old markers
+  mapMarkers.forEach(m => leafletMap.removeLayer(m));
+  mapMarkers = [];
+
+  const filtered = getFiltered();
+
+  filtered.forEach(b => {
+    const avg = getOverallAvg(b.ratings);
+    const color = getRatingHex(avg);
+
+    // Create a custom icon (the colored circle with toilet emoji)
+    const icon = L.divIcon({
+      className: "",
+      html: `<div class="custom-marker" style="background:${color}">🚽</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -20],
+    });
+
+    // Create the marker and add it to the map
+    const marker = L.marker([b.lat, b.lng], { icon }).addTo(leafletMap);
+
+    // Create the popup that shows when you tap a marker
+    const popupHTML = `
+      <div class="bathroom-popup">
+        <h3>${b.name}</h3>
+        <div class="location">${b.location}</div>
+        <div class="rating-big ${getRatingColor(avg)}">${b.ratings.length ? avg.toFixed(1) : "NEW"}</div>
+        <div style="font-size:12px;color:#f59e0b;margin:2px 0">${starsHTML(avg)}</div>
+        <div style="font-size:11px;color:#94a3b8">${b.ratings.length} review${b.ratings.length !== 1 ? "s" : ""}</div>
+        <button class="view-btn" onclick="openDetail(${b.id})">View Details</button>
+      </div>
+    `;
+    marker.bindPopup(popupHTML);
+    mapMarkers.push(marker);
+  });
+}
+
+function fitMapToMarkers() {
+  if (!leafletMap || mapMarkers.length === 0) return;
+  const group = L.featureGroup(mapMarkers);
+  leafletMap.fitBounds(group.getBounds().pad(0.1));
+}
+
+function destroyMap() {
+  if (leafletMap) {
+    leafletMap.remove();
+    leafletMap = null;
+    mapMarkers = [];
+  }
+}
+
+
+// ============================================================================
+// RENDER FUNCTIONS
+// ============================================================================
+// These functions build the HTML for each screen and insert it into the page.
+// In React, this would all be JSX. Here we use template literals (backtick strings)
+// which let you embed variables with ${variable}.
+
+function render() {
+  const app = document.getElementById("app");
+
+  if (state.view === "detail") {
+    app.innerHTML = renderDetail();
+    attachDetailEvents();
+  } else if (state.view === "add") {
+    app.innerHTML = renderAdd();
+    attachAddEvents();
+  } else {
+    destroyMap();
+    app.innerHTML = renderHome();
+    attachHomeEvents();
+    if (state.tab === "map") {
+      // Small delay to let the DOM render before initializing the map
+      setTimeout(initMap, 50);
+    }
+  }
+}
+
+function renderHome() {
+  const filtered = getFiltered();
+
+  return `
+    <div class="header">
+      <div class="header-top">
+        <div>
+          <div class="app-title">🚽 Throne Room</div>
+          <div class="app-subtitle">Find & rate the best bathrooms</div>
+        </div>
+        <button class="add-btn" id="addBtn">+</button>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search bathrooms, locations, tags..." value="${state.searchQuery}">
+      </div>
+      <div class="tabs">
+        <button class="tab-btn ${state.tab === 'map' ? 'active' : ''}" data-tab="map">📍 Map</button>
+        <button class="tab-btn ${state.tab === 'list' ? 'active' : ''}" data-tab="list">📋 List</button>
+      </div>
+    </div>
+    <div class="content">
+      ${state.tab === "map" ? `
+        <div class="map-container">
+          <div class="map-wrap">
+            <div id="map"></div>
+          </div>
+        </div>
+      ` : `
+        <div class="list-container">
+          <div class="sort-bar">
+            Sort by:
+            <button class="sort-btn ${state.sortBy === 'rating' ? 'active' : ''}" data-sort="rating">⭐ Rating</button>
+            <button class="sort-btn ${state.sortBy === 'reviews' ? 'active' : ''}" data-sort="reviews">💬 Reviews</button>
+            <button class="sort-btn ${state.sortBy === 'name' ? 'active' : ''}" data-sort="name">🔤 Name</button>
+          </div>
+          ${filtered.length === 0 ? `
+            <div class="empty-state">
+              <div class="emoji">🚽</div>
+              <p>No bathrooms found</p>
+            </div>
+          ` : filtered.map(b => {
+            const avg = getOverallAvg(b.ratings);
+            return `
+              <button class="card" data-id="${b.id}">
+                <div class="card-rating ${getRatingColor(avg)}">${b.ratings.length ? avg.toFixed(1) : "NEW"}</div>
+                <div class="card-info">
+                  <div class="card-name">${b.name}</div>
+                  <div class="card-location">${b.location}</div>
+                  <div class="card-stars">${starsHTML(avg)} <span style="color:#94a3b8">(${b.ratings.length})</span></div>
+                  <div class="card-tags">${b.tags.slice(0,3).map(t => tagHTML(t)).join("")}</div>
+                </div>
+                <span class="card-arrow">›</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderDetail() {
+  const b = state.bathrooms.find(x => x.id === state.selectedId);
+  if (!b) return "";
+  const avg = getOverallAvg(b.ratings);
+
+  return `
+    <div class="detail-view">
+      <div class="detail-header">
+        <button class="back-btn" id="backBtn">←</button>
+        <div class="detail-title">
+          <h2>${b.name}</h2>
+          <p>${b.location}</p>
+        </div>
+        <div class="detail-score">
+          <div class="score ${getRatingColor(avg)}">${avg.toFixed(1)}</div>
+          <div class="count">${b.ratings.length} review${b.ratings.length !== 1 ? "s" : ""}</div>
+        </div>
+      </div>
+      <div class="detail-content">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">✨</div>
+            <div class="stat-value">${getAvg(b.ratings, "cleanliness").toFixed(1)}</div>
+            <div class="stat-label">Clean</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">♿</div>
+            <div class="stat-value">${getAvg(b.ratings, "accessibility").toFixed(1)}</div>
+            <div class="stat-label">Accessible</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💫</div>
+            <div class="stat-value">${getAvg(b.ratings, "vibe").toFixed(1)}</div>
+            <div class="stat-label">Vibe</div>
+          </div>
+        </div>
+        <div class="detail-tags">
+          ${b.tags.map(t => tagHTML(t)).join("")}
+          <span class="detail-hours">🕐 ${b.hours}</span>
+        </div>
+        <div class="reviews-section">
+          <div class="reviews-header">
+            <h3>Reviews</h3>
+            <button class="add-review-btn" id="toggleReviewBtn">${state.showReviewForm ? "Cancel" : "+ Add Review"}</button>
+          </div>
+          ${state.showReviewForm ? renderReviewForm() : ""}
+          ${b.ratings.slice().reverse().map(r => `
+            <div class="review-card">
+              <div class="review-top">
+                <span class="review-user">${r.user}</span>
+                <span class="review-date">${r.date}</span>
+              </div>
+              <div class="review-scores">
+                <span>✨ ${r.cleanliness}</span>
+                <span>♿ ${r.accessibility}</span>
+                <span>💫 ${r.vibe}</span>
+              </div>
+              ${r.comment ? `<p class="review-comment">${r.comment}</p>` : ""}
+              ${r.photos && r.photos.length > 0 ? `
+                <div class="review-photos">
+                  ${r.photos.map(url => `<img class="review-photo" src="${url}" alt="Review photo">`).join("")}
+                </div>
+              ` : ""}
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderReviewForm() {
+  return `
+    <div class="review-form">
+      <input class="form-input" id="reviewNameInput" type="text" placeholder="Your name" value="${state.reviewName}">
+      <div class="star-row">
+        <span class="star-label">Cleanliness</span>
+        <div class="star-buttons">${[1,2,3,4,5].map(s => `<button class="star-btn ${s <= state.reviewCleanliness ? 'active' : ''}" data-field="reviewCleanliness" data-val="${s}">★</button>`).join("")}</div>
+      </div>
+      <div class="star-row">
+        <span class="star-label">Accessibility</span>
+        <div class="star-buttons">${[1,2,3,4,5].map(s => `<button class="star-btn ${s <= state.reviewAccessibility ? 'active' : ''}" data-field="reviewAccessibility" data-val="${s}">★</button>`).join("")}</div>
+      </div>
+      <div class="star-row">
+        <span class="star-label">Vibe</span>
+        <div class="star-buttons">${[1,2,3,4,5].map(s => `<button class="star-btn ${s <= state.reviewVibe ? 'active' : ''}" data-field="reviewVibe" data-val="${s}">★</button>`).join("")}</div>
+      </div>
+      <textarea class="form-input" id="reviewCommentInput" placeholder="Tell us about this bathroom...">${state.reviewComment}</textarea>
+      <label class="photo-upload-label">
+        📷 Add photos
+        <input type="file" accept="image/*" multiple id="reviewPhotoInput" style="display:none">
+      </label>
+      ${state.reviewPhotos.length > 0 ? `
+        <div class="photo-previews">
+          ${state.reviewPhotos.map((p, i) => `
+            <div class="photo-preview-wrap">
+              <img class="photo-preview" src="${p}" alt="">
+              <button class="photo-remove" data-photo-idx="${i}">×</button>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+      <button class="submit-btn" id="submitReviewBtn" ${(!state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim()) ? "disabled" : ""}>Submit Review</button>
+    </div>
+  `;
+}
+
+function renderAdd() {
+  const allTags = ["public", "free", "accessible", "hotel", "bougie", "transit", "store", "family-friendly"];
+
+  return `
+    <div class="add-view">
+      <div class="detail-header">
+        <button class="back-btn" id="backBtn">←</button>
+        <div class="detail-title">
+          <h2>Add a Bathroom</h2>
+          <p>Help others find great restrooms</p>
+        </div>
+      </div>
+      <div class="add-content">
+        <div class="form-group">
+          <label class="form-label">Bathroom Name *</label>
+          <input class="form-input" id="newNameInput" type="text" placeholder='e.g. "Starbucks on 5th Ave"' value="${state.newName}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location / Address *</label>
+          <input class="form-input" id="newLocationInput" type="text" placeholder="Where is it?" value="${state.newLocation}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hours</label>
+          <input class="form-input" id="newHoursInput" type="text" placeholder='e.g. "9am - 9pm"' value="${state.newHours}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pin Location on Map</label>
+          <button class="locate-btn" id="locateBtn" ${state.locating ? "disabled" : ""}>
+            ${state.locating ? "📡 Getting location..." : "📍 Use My Current Location"}
+          </button>
+          ${state.newLat ? `<div class="location-note">📍 Location set (${state.newLat.toFixed(4)}, ${state.newLng.toFixed(4)})</div>` : `<div class="location-note">We'll use your GPS to place the pin. You can also skip this.</div>`}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags</label>
+          <div class="tag-select">
+            ${allTags.map(tag => `
+              <button class="tag-toggle tag-${tag} ${state.newTags.includes(tag) ? 'active' : ''}" data-tag="${tag}">${tag}</button>
+            `).join("")}
+          </div>
+        </div>
+        <button class="big-submit-btn" id="submitBathroomBtn" ${(!state.newName.trim() || !state.newLocation.trim()) ? "disabled" : ""}>Add Bathroom 🚽</button>
+      </div>
+    </div>
+  `;
+}
+
+
+// ============================================================================
+// EVENT HANDLERS
+// ============================================================================
+// These functions wire up click/input events after each render.
+// In React this happens automatically; in plain JS we do it manually.
+
+function attachHomeEvents() {
+  document.getElementById("addBtn").onclick = () => { state.view = "add"; render(); };
+
+  document.getElementById("searchInput").oninput = (e) => {
+    state.searchQuery = e.target.value;
+    if (state.tab === "list") {
+      // Re-render just the list portion
+      render();
+    } else {
+      updateMapMarkers();
+    }
+  };
+
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.onclick = () => {
+      const newTab = btn.dataset.tab;
+      if (newTab !== state.tab) {
+        if (state.tab === "map") destroyMap();
+        state.tab = newTab;
+        render();
+      }
+    };
+  });
+
+  document.querySelectorAll(".sort-btn").forEach(btn => {
+    btn.onclick = () => {
+      state.sortBy = btn.dataset.sort;
+      render();
+    };
+  });
+
+  document.querySelectorAll(".card").forEach(card => {
+    card.onclick = () => {
+      state.selectedId = parseInt(card.dataset.id);
+      state.view = "detail";
+      state.showReviewForm = false;
+      render();
+    };
+  });
+}
+
+// Make openDetail available globally for map popup buttons
+window.openDetail = function(id) {
+  state.selectedId = id;
+  state.view = "detail";
+  state.showReviewForm = false;
+  destroyMap();
+  render();
+};
+
+function attachDetailEvents() {
+  document.getElementById("backBtn").onclick = () => {
+    state.view = "home";
+    state.showReviewForm = false;
+    resetReviewForm();
+    render();
+  };
+
+  document.getElementById("toggleReviewBtn").onclick = () => {
+    state.showReviewForm = !state.showReviewForm;
+    if (!state.showReviewForm) resetReviewForm();
+    render();
+  };
+
+  // Star rating buttons
+  document.querySelectorAll(".star-btn").forEach(btn => {
+    btn.onclick = () => {
+      state[btn.dataset.field] = parseInt(btn.dataset.val);
+      render();
+    };
+  });
+
+  // Text inputs
+  const nameInput = document.getElementById("reviewNameInput");
+  if (nameInput) nameInput.oninput = (e) => { state.reviewName = e.target.value; };
+
+  const commentInput = document.getElementById("reviewCommentInput");
+  if (commentInput) commentInput.oninput = (e) => { state.reviewComment = e.target.value; };
+
+  // Photo upload
+  const photoInput = document.getElementById("reviewPhotoInput");
+  if (photoInput) {
+    photoInput.onchange = (e) => {
+      Array.from(e.target.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          state.reviewPhotos.push(reader.result);
+          render();
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
+
+  // Photo remove buttons
+  document.querySelectorAll(".photo-remove").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      state.reviewPhotos.splice(parseInt(btn.dataset.photoIdx), 1);
+      render();
+    };
+  });
+
+  // Submit review
+  const submitBtn = document.getElementById("submitReviewBtn");
+  if (submitBtn) {
+    submitBtn.onclick = () => {
+      if (!state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim()) return;
+
+      const bathroom = state.bathrooms.find(b => b.id === state.selectedId);
+      if (bathroom) {
+        bathroom.ratings.push({
+          user: state.reviewName.trim(),
+          cleanliness: state.reviewCleanliness,
+          accessibility: state.reviewAccessibility,
+          vibe: state.reviewVibe,
+          comment: state.reviewComment.trim(),
+          date: todayStr(),
+          photos: [...state.reviewPhotos],
+        });
+        saveBathrooms();
+        state.showReviewForm = false;
+        resetReviewForm();
+        showToast("Review submitted! 🎉");
+        render();
+      }
+    };
+  }
+}
+
+function attachAddEvents() {
+  document.getElementById("backBtn").onclick = () => {
+    state.view = "home";
+    resetAddForm();
+    render();
+  };
+
+  document.getElementById("newNameInput").oninput = (e) => { state.newName = e.target.value; updateAddButton(); };
+  document.getElementById("newLocationInput").oninput = (e) => { state.newLocation = e.target.value; updateAddButton(); };
+  document.getElementById("newHoursInput").oninput = (e) => { state.newHours = e.target.value; };
+
+  // GPS location
+  document.getElementById("locateBtn").onclick = () => {
+    if (!navigator.geolocation) {
+      showToast("Geolocation not supported by your browser");
+      return;
+    }
+    state.locating = true;
+    render();
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        state.newLat = pos.coords.latitude;
+        state.newLng = pos.coords.longitude;
+        state.locating = false;
+        showToast("Location captured! 📍");
+        render();
+      },
+      (err) => {
+        state.locating = false;
+        showToast("Couldn't get location. You can skip this step.");
+        render();
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  // Tag toggles
+  document.querySelectorAll(".tag-toggle").forEach(btn => {
+    btn.onclick = () => {
+      const tag = btn.dataset.tag;
+      if (state.newTags.includes(tag)) {
+        state.newTags = state.newTags.filter(t => t !== tag);
+      } else {
+        state.newTags.push(tag);
+      }
+      render();
+    };
+  });
+
+  // Submit
+  document.getElementById("submitBathroomBtn").onclick = () => {
+    if (!state.newName.trim() || !state.newLocation.trim()) return;
+
+    const newId = Math.max(0, ...state.bathrooms.map(b => b.id)) + 1;
+
+    // Use GPS coordinates if available, otherwise use a default location
+    const lat = state.newLat || (40.748 + (Math.random() - 0.5) * 0.03);
+    const lng = state.newLng || (-73.985 + (Math.random() - 0.5) * 0.02);
+
+    state.bathrooms.push({
+      id: newId,
+      name: state.newName.trim(),
+      location: state.newLocation.trim(),
+      lat: lat,
+      lng: lng,
+      ratings: [],
+      tags: [...state.newTags],
+      hours: state.newHours.trim() || "Unknown",
+    });
+
+    saveBathrooms();
+    state.view = "home";
+    resetAddForm();
+    showToast("Bathroom added! 🚽");
+    render();
+  };
+}
+
+function updateAddButton() {
+  const btn = document.getElementById("submitBathroomBtn");
+  if (btn) btn.disabled = !state.newName.trim() || !state.newLocation.trim();
+}
+
+function resetReviewForm() {
+  state.reviewName = "";
+  state.reviewComment = "";
+  state.reviewCleanliness = 0;
+  state.reviewAccessibility = 0;
+  state.reviewVibe = 0;
+  state.reviewPhotos = [];
+}
+
+function resetAddForm() {
+  state.newName = "";
+  state.newLocation = "";
+  state.newHours = "";
+  state.newTags = [];
+  state.newLat = null;
+  state.newLng = null;
+  state.locating = false;
+}
+
+
+// ============================================================================
+// START THE APP!
+// ============================================================================
+render();
+
+</script>
+</body>
+</html>
