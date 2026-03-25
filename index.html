@@ -788,7 +788,10 @@ function attachHomeEvents() {
   document.getElementById("searchInput").oninput = (e) => {
     state.searchQuery = e.target.value;
     if (state.tab === "list") renderListOnly();
-    else updateMapMarkers();
+    else {
+      updateMapMarkers();
+      fitMapToMarkers();  // Zoom the map to show the matching results!
+    }
   };
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.onclick = () => {
@@ -834,7 +837,11 @@ function attachDetailEvents() {
     btn.onclick = () => { state[btn.dataset.field] = parseInt(btn.dataset.val); render(); };
   });
   const nameInput = document.getElementById("reviewNameInput");
-  if (nameInput) nameInput.oninput = (e) => { state.reviewName = e.target.value; };
+  if (nameInput) nameInput.oninput = (e) => {
+    state.reviewName = e.target.value;
+    // Update the submit button's disabled state as the user types
+    updateReviewButton();
+  };
   const commentInput = document.getElementById("reviewCommentInput");
   if (commentInput) commentInput.oninput = (e) => { state.reviewComment = e.target.value; };
 
@@ -925,6 +932,11 @@ function attachAddEvents() {
     state.submitting = false;
     render();
   };
+}
+
+function updateReviewButton() {
+  const btn = document.getElementById("submitReviewBtn");
+  if (btn) btn.disabled = !state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim() || state.submitting;
 }
 
 function updateAddButton() {
