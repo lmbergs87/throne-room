@@ -247,6 +247,29 @@
 
     .result-count { font-size: 11px; color: #94a3b8; padding: 0 0 8px; }
 
+    /* Near Me button — floats over the map */
+    .near-me-btn {
+      position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 16px; background: white; color: #6366f1;
+      border: 2px solid #6366f1; border-radius: 50px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.2s;
+    }
+    .near-me-btn:hover { background: #6366f1; color: white; }
+    .near-me-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .near-me-btn .pulse {
+      display: inline-block; width: 8px; height: 8px; background: #6366f1;
+      border-radius: 50%; animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.5); } }
+
+    /* User location marker */
+    .user-marker {
+      width: 16px; height: 16px; background: #6366f1; border-radius: 50%;
+      border: 3px solid white; box-shadow: 0 0 0 2px #6366f1, 0 2px 8px rgba(99,102,241,0.4);
+    }
+
     /* Loading spinner */
     .loading { text-align: center; padding: 60px 16px; color: #94a3b8; }
     .loading .spinner {
@@ -325,6 +348,7 @@ const state = {
   newLng: null,
   locating: false,
   submitting: false,
+  locatingNearMe: false,
 };
 
 
@@ -478,15 +502,70 @@ function escapeHTML(str) {
 function tagHTML(tag) {
   return `<span class="tag tag-${tag}">${escapeHTML(tag)}</span>`;
 }
+// SEARCH ALIASES: Maps common names to their abbreviations and vice versa.
+// When someone searches "oklahoma", we also check for "okc", "oklahoma city", etc.
+// This way all OKC bathrooms show up even if their location says "OKC".
+const SEARCH_ALIASES = {
+  "oklahoma": ["okc", "oklahoma city"],
+  "oklahoma city": ["okc", "oklahoma"],
+  "okc": ["oklahoma", "oklahoma city"],
+  "new york": ["nyc", "manhattan", "new york city"],
+  "new york city": ["nyc", "manhattan", "new york"],
+  "nyc": ["new york", "manhattan", "new york city"],
+  "manhattan": ["nyc", "new york", "new york city"],
+  "los angeles": ["la", "l.a."],
+  "la": ["los angeles", "l.a."],
+  "san francisco": ["sf", "san fran"],
+  "sf": ["san francisco", "san fran"],
+  "chicago": ["chi", "chi-town"],
+  "denver": ["den"],
+  "seattle": ["sea"],
+  "miami": ["mia"],
+  "austin": ["atx"],
+  "portland": ["pdx"],
+  "nashville": ["nash"],
+  "illinois": ["chicago", "chi"],
+  "california": ["la", "los angeles", "san francisco", "sf"],
+  "texas": ["austin", "atx", "houston", "dallas", "san antonio"],
+  "washington": ["seattle", "sea"],
+  "florida": ["miami", "mia", "orlando", "tampa"],
+  "colorado": ["denver", "den"],
+  "oregon": ["portland", "pdx"],
+  "tennessee": ["nashville", "nash"],
+  "georgia": ["atlanta", "atl"],
+  "massachusetts": ["boston"],
+  "pennsylvania": ["philly", "philadelphia", "pittsburgh"],
+  "arizona": ["phoenix", "scottsdale", "tucson"],
+  "nevada": ["las vegas", "vegas"],
+  "ohio": ["columbus", "cleveland", "cincinnati"],
+  "michigan": ["detroit"],
+  "minnesota": ["minneapolis", "st paul"],
+  "missouri": ["kansas city", "st louis"],
+  "louisiana": ["new orleans", "nola"],
+};
+
 function getFiltered() {
   let list = [...state.bathrooms];
   if (state.searchQuery) {
-    const q = state.searchQuery.toLowerCase();
-    list = list.filter(b =>
-      b.name.toLowerCase().includes(q) ||
-      b.location.toLowerCase().includes(q) ||
-      b.tags.some(t => t.includes(q))
-    );
+    const q = state.searchQuery.toLowerCase().trim();
+
+    // Build a list of search terms: the original query + any aliases
+    const searchTerms = [q];
+    const aliases = SEARCH_ALIASES[q];
+    if (aliases) searchTerms.push(...aliases);
+
+    list = list.filter(b => {
+      const name = b.name.toLowerCase();
+      const loc = b.location.toLowerCase();
+      const tags = b.tags.map(t => t.toLowerCase());
+
+      // Check if ANY of the search terms match the name, location, or tags
+      return searchTerms.some(term =>
+        name.includes(term) ||
+        loc.includes(term) ||
+        tags.some(t => t.includes(term))
+      );
+    });
   }
   if (state.sortBy === "rating") list.sort((a, b) => getOverallAvg(b.ratings) - getOverallAvg(a.ratings));
   else if (state.sortBy === "reviews") list.sort((a, b) => b.ratings.length - a.ratings.length);
@@ -605,9 +684,87 @@ function geoZoomTo(query) {
   }, 500);
 }
 
+let userLocationMarker = null;
+
 function destroyMap() {
-  if (leafletMap) { leafletMap.remove(); leafletMap = null; mapMarkers = []; }
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; mapMarkers = []; userLocationMarker = null; }
   if (geoSearchTimer) { clearTimeout(geoSearchTimer); geoSearchTimer = null; }
+}
+
+// NEAR ME: Uses the phone/browser's GPS to find the user's current position,
+// drops a blue dot on the map, and zooms to show nearby bathrooms.
+// On a phone this is very accurate; on a laptop it uses WiFi-based location.
+function activateNearMe() {
+  if (!navigator.geolocation) {
+    showToast("Location not supported on this device");
+    return;
+  }
+
+  state.locatingNearMe = true;
+  // Just update the button text, don't re-render the whole page
+  const btn = document.getElementById("nearMeBtn");
+  if (btn) btn.innerHTML = '<span class="pulse"></span> Locating...';
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      state.locatingNearMe = false;
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      if (!leafletMap || typeof L === "undefined") return;
+
+      // Remove old user marker if any
+      if (userLocationMarker) {
+        leafletMap.removeLayer(userLocationMarker);
+      }
+
+      // Add a blue dot for the user's location
+      const userIcon = L.divIcon({
+        className: "",
+        html: '<div class="user-marker"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      userLocationMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
+      userLocationMarker.bindPopup('<div style="text-align:center;font-size:13px;font-weight:600">📍 You are here</div>');
+
+      // Find bathrooms near the user (within ~30 miles / 0.5 degrees)
+      const nearby = state.bathrooms.filter(b => {
+        const dLat = Math.abs(b.lat - lat);
+        const dLng = Math.abs(b.lng - lng);
+        return dLat < 0.5 && dLng < 0.5;
+      });
+
+      if (nearby.length > 0) {
+        // Zoom to show user + nearby bathrooms
+        const points = [[lat, lng], ...nearby.map(b => [b.lat, b.lng])];
+        leafletMap.fitBounds(points, { padding: [40, 40], maxZoom: 14 });
+        showToast(nearby.length + " bathroom" + (nearby.length !== 1 ? "s" : "") + " near you!");
+      } else {
+        // No bathrooms nearby — just zoom to user location
+        leafletMap.setView([lat, lng], 13);
+        showToast("No bathrooms nearby yet — be the first to add one!");
+      }
+
+      // Update the button back to normal
+      const btn2 = document.getElementById("nearMeBtn");
+      if (btn2) btn2.innerHTML = '📍 Near Me';
+    },
+    (error) => {
+      state.locatingNearMe = false;
+      const btn2 = document.getElementById("nearMeBtn");
+      if (btn2) btn2.innerHTML = '📍 Near Me';
+
+      if (error.code === 1) {
+        showToast("Location access denied — check your browser settings");
+      } else if (error.code === 2) {
+        showToast("Couldn't determine your location");
+      } else {
+        showToast("Location timed out — try again");
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
 }
 
 
@@ -712,7 +869,7 @@ function renderHome() {
     </div>
     <div class="content">
       ${state.tab === "map" ? `
-        <div class="map-container"><div class="map-wrap"><div id="map"></div></div></div>
+        <div class="map-container" style="position:relative"><div class="map-wrap"><div id="map"></div></div><button class="near-me-btn" id="nearMeBtn">${state.locatingNearMe ? '<span class="pulse"></span> Locating...' : '📍 Near Me'}</button></div>
       ` : `
         <div class="list-container">
           <div class="sort-bar">
@@ -855,6 +1012,8 @@ function attachHomeEvents() {
       }
     }
   };
+  const nearMeBtn = document.getElementById("nearMeBtn");
+  if (nearMeBtn) nearMeBtn.onclick = activateNearMe;
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.onclick = () => {
       const t = btn.dataset.tab;
