@@ -5,193 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Throne Room — Find & Rate Bathrooms</title>
 
-  <!-- Leaflet CSS: The map library's styles -->
+  <!-- Leaflet: Free open-source map library -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-  <!-- Leaflet JS: The actual map library -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- App icon for when someone saves it to their phone home screen -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚽</text></svg>">
+  <!-- No Supabase library needed — we talk directly to the database API using fetch() -->
 
-  <!-- Makes it feel like a native app on iOS/Android -->
+  <!-- App icon & mobile settings -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚽</text></svg>">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Throne Room">
   <meta name="theme-color" content="#6366f1">
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f8fafc;
-      color: #1e293b;
-      overflow: hidden;
-      height: 100vh;
-      height: 100dvh;
+      background: #f8fafc; color: #1e293b;
+      overflow: hidden; height: 100vh; height: 100dvh;
     }
-
     #app {
-      max-width: 480px;
-      margin: 0 auto;
-      height: 100vh;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      background: #f8fafc;
-      position: relative;
+      max-width: 480px; margin: 0 auto; height: 100vh; height: 100dvh;
+      display: flex; flex-direction: column; background: #f8fafc; position: relative;
     }
 
-    /* ---- HEADER ---- */
-    .header {
-      background: white;
-      padding: 12px 16px;
-      border-bottom: 1px solid #e2e8f0;
-      flex-shrink: 0;
-    }
-    .header-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
+    .header { background: white; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .app-title { font-size: 20px; font-weight: 800; }
     .app-subtitle { font-size: 11px; color: #94a3b8; }
 
     .add-btn {
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      background: #6366f1;
-      color: white;
-      border: none;
-      font-size: 22px;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
-      transition: background 0.2s;
+      width: 40px; height: 40px; border-radius: 50%; background: #6366f1; color: white;
+      border: none; font-size: 22px; font-weight: bold; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3); transition: background 0.2s;
     }
     .add-btn:hover { background: #4f46e5; }
 
-    /* ---- SEARCH BAR ---- */
-    .search-wrap {
-      position: relative;
-      margin-bottom: 10px;
-    }
-    .search-icon {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 14px;
-    }
+    .search-wrap { position: relative; margin-bottom: 10px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; }
     .search-input {
-      width: 100%;
-      padding: 8px 16px 8px 36px;
-      border: none;
-      border-radius: 50px;
-      background: #f1f5f9;
-      font-size: 14px;
-      outline: none;
+      width: 100%; padding: 8px 16px 8px 36px; border: none; border-radius: 50px;
+      background: #f1f5f9; font-size: 14px; outline: none;
     }
     .search-input:focus { box-shadow: 0 0 0 2px rgba(99,102,241,0.3); }
 
-    /* ---- TAB SWITCHER ---- */
-    .tabs {
-      display: flex;
-      background: #f1f5f9;
-      border-radius: 50px;
-      padding: 3px;
-    }
+    .tabs { display: flex; background: #f1f5f9; border-radius: 50px; padding: 3px; }
     .tab-btn {
-      flex: 1;
-      padding: 7px;
-      border: none;
-      border-radius: 50px;
-      background: transparent;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      color: #64748b;
-      transition: all 0.2s;
+      flex: 1; padding: 7px; border: none; border-radius: 50px; background: transparent;
+      font-size: 13px; font-weight: 600; cursor: pointer; color: #64748b; transition: all 0.2s;
     }
-    .tab-btn.active {
-      background: white;
-      color: #1e293b;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
+    .tab-btn.active { background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-    /* ---- MAIN CONTENT AREA ---- */
-    .content {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
+    .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-    /* ---- MAP ---- */
     #map { width: 100%; height: 100%; min-height: 300px; }
     .map-container { padding: 12px; height: 100%; }
-    .map-wrap {
-      border-radius: 16px;
-      overflow: hidden;
-      height: 100%;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
+    .map-wrap { border-radius: 16px; overflow: hidden; height: 100%; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
     .bathroom-popup { text-align: center; min-width: 160px; }
     .bathroom-popup h3 { font-size: 14px; margin-bottom: 4px; }
     .bathroom-popup .location { font-size: 11px; color: #64748b; margin-bottom: 6px; }
     .bathroom-popup .rating-big { font-size: 24px; font-weight: 800; }
     .bathroom-popup .view-btn {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 5px 16px;
-      background: #6366f1;
-      color: white;
-      border-radius: 50px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      text-decoration: none;
+      display: inline-block; margin-top: 6px; padding: 5px 16px; background: #6366f1;
+      color: white; border-radius: 50px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: none; text-decoration: none;
     }
     .bathroom-popup .view-btn:hover { background: #4f46e5; }
 
-    /* ---- BATHROOM LIST CARDS ---- */
     .list-container { padding: 12px; }
-    .sort-bar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 10px;
-      font-size: 12px;
-      color: #94a3b8;
-    }
+    .sort-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 12px; color: #94a3b8; }
     .sort-btn {
-      padding: 4px 10px;
-      border: none;
-      border-radius: 50px;
-      background: transparent;
-      font-size: 12px;
-      cursor: pointer;
-      color: #94a3b8;
-      transition: all 0.2s;
+      padding: 4px 10px; border: none; border-radius: 50px; background: transparent;
+      font-size: 12px; cursor: pointer; color: #94a3b8; transition: all 0.2s;
     }
     .sort-btn.active { background: #e0e7ff; color: #4338ca; font-weight: 600; }
 
     .card {
-      background: white;
-      border-radius: 16px;
-      padding: 14px;
-      margin-bottom: 8px;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      transition: box-shadow 0.2s;
-      border: none;
-      width: 100%;
-      text-align: left;
+      background: white; border-radius: 16px; padding: 14px; margin-bottom: 8px;
+      display: flex; gap: 12px; align-items: center; cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: box-shadow 0.2s;
+      border: none; width: 100%; text-align: left;
     }
     .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
@@ -203,7 +97,6 @@
     .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
     .card-arrow { color: #cbd5e1; font-size: 18px; flex-shrink: 0; }
 
-    /* ---- TAGS ---- */
     .tag { font-size: 10px; padding: 2px 8px; border-radius: 50px; font-weight: 600; }
     .tag-public { background: #dbeafe; color: #1d4ed8; }
     .tag-free { background: #dcfce7; color: #15803d; }
@@ -225,26 +118,12 @@
     .tag-gym { background: #fef9c3; color: #854d0e; }
     .tag-bar { background: #ede9fe; color: #5b21b6; }
 
-    /* ---- DETAIL VIEW ---- */
     .detail-view { display: flex; flex-direction: column; height: 100%; }
     .detail-header {
-      background: white;
-      padding: 12px 16px;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
+      background: white; padding: 12px 16px; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
     }
-    .back-btn {
-      font-size: 24px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #94a3b8;
-      padding: 0;
-      line-height: 1;
-    }
+    .back-btn { font-size: 24px; background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0; line-height: 1; }
     .back-btn:hover { color: #475569; }
     .detail-title { flex: 1; min-width: 0; }
     .detail-title h2 { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -253,19 +132,12 @@
     .detail-score .score { font-size: 28px; font-weight: 800; }
     .detail-score .count { font-size: 11px; }
 
-    .detail-content {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: 20px;
-    }
-
+    .detail-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 20px; }
     .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
     .stat-card { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .stat-icon { font-size: 20px; }
     .stat-value { font-size: 18px; font-weight: 800; color: #1e293b; }
     .stat-label { font-size: 11px; color: #64748b; }
-
     .detail-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 0 12px 10px; }
     .detail-hours { font-size: 11px; color: #94a3b8; margin-left: auto; }
 
@@ -274,32 +146,15 @@
     .reviews-header h3 { font-size: 15px; font-weight: 700; }
 
     .add-review-btn {
-      padding: 6px 16px;
-      background: #6366f1;
-      color: white;
-      border: none;
-      border-radius: 50px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
+      padding: 6px 16px; background: #6366f1; color: white; border: none; border-radius: 50px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
     }
     .add-review-btn:hover { background: #4f46e5; }
 
-    .review-form {
-      background: white;
-      border: 2px solid #e0e7ff;
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 12px;
-    }
+    .review-form { background: white; border: 2px solid #e0e7ff; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
     .form-input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      font-size: 14px;
-      outline: none;
-      margin-bottom: 10px;
+      width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px;
+      font-size: 14px; outline: none; margin-bottom: 10px;
     }
     .form-input:focus { box-shadow: 0 0 0 2px rgba(99,102,241,0.3); border-color: #a5b4fc; }
     textarea.form-input { height: 70px; resize: none; }
@@ -308,37 +163,26 @@
     .star-label { font-size: 13px; color: #475569; width: 110px; }
     .star-buttons { display: flex; gap: 4px; }
     .star-btn {
-      font-size: 26px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #d1d5db;
-      transition: transform 0.1s;
-      padding: 0 2px;
+      font-size: 26px; background: none; border: none; cursor: pointer; color: #d1d5db;
+      transition: transform 0.1s; padding: 0 2px;
     }
     .star-btn:active { transform: scale(1.3); }
     .star-btn.active { color: #f59e0b; }
 
-    .photo-upload-label {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 13px; color: #6366f1; cursor: pointer; margin: 8px 0;
-    }
+    .photo-upload-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #6366f1; cursor: pointer; margin: 8px 0; }
     .photo-upload-label:hover { color: #4f46e5; }
     .photo-previews { display: flex; gap: 8px; overflow-x: auto; margin: 6px 0; }
     .photo-preview { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
     .photo-preview-wrap { position: relative; flex-shrink: 0; }
     .photo-remove {
-      position: absolute; top: -4px; right: -4px;
-      width: 20px; height: 20px;
+      position: absolute; top: -4px; right: -4px; width: 20px; height: 20px;
       background: #ef4444; color: white; border: none; border-radius: 50%;
-      font-size: 12px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
 
     .submit-btn {
-      width: 100%; padding: 10px; background: #6366f1; color: white;
-      border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
-      cursor: pointer; margin-top: 8px;
+      width: 100%; padding: 10px; background: #6366f1; color: white; border: none;
+      border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px;
     }
     .submit-btn:hover { background: #4f46e5; }
     .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -352,34 +196,29 @@
     .review-photos { display: flex; gap: 8px; margin-top: 8px; }
     .review-photo { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; }
 
-    /* ---- ADD BATHROOM VIEW ---- */
     .add-view { display: flex; flex-direction: column; height: 100%; }
     .add-content { flex: 1; overflow-y: auto; padding: 16px; }
     .form-group { margin-bottom: 14px; }
     .form-label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
     .tag-select { display: flex; flex-wrap: wrap; gap: 6px; }
     .tag-toggle {
-      font-size: 11px; padding: 5px 12px; border-radius: 50px;
-      border: 2px solid transparent; background: #f8fafc; color: #94a3b8;
-      cursor: pointer; font-weight: 600; transition: all 0.2s;
+      font-size: 11px; padding: 5px 12px; border-radius: 50px; border: 2px solid transparent;
+      background: #f8fafc; color: #94a3b8; cursor: pointer; font-weight: 600; transition: all 0.2s;
     }
     .tag-toggle.active { border-color: currentColor; }
 
     .locate-btn {
-      display: flex; align-items: center; gap: 6px;
-      padding: 10px 16px; background: #f0fdf4; color: #15803d;
-      border: 2px solid #bbf7d0; border-radius: 10px;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      width: 100%; justify-content: center; margin-top: 6px;
+      display: flex; align-items: center; gap: 6px; padding: 10px 16px; background: #f0fdf4;
+      color: #15803d; border: 2px solid #bbf7d0; border-radius: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer; width: 100%; justify-content: center; margin-top: 6px;
     }
     .locate-btn:hover { background: #dcfce7; }
     .locate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .location-note { font-size: 11px; color: #64748b; margin-top: 6px; text-align: center; }
 
     .big-submit-btn {
-      width: 100%; padding: 14px; background: #6366f1; color: white;
-      border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
-      cursor: pointer; margin-top: 8px;
+      width: 100%; padding: 14px; background: #6366f1; color: white; border: none;
+      border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px;
     }
     .big-submit-btn:hover { background: #4f46e5; }
     .big-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -393,307 +232,79 @@
     .color-red { color: #ef4444; }
 
     .custom-marker {
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%; border: 2px solid white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      font-size: 16px; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center; border-radius: 50%;
+      border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 16px;
+      width: 36px; height: 36px;
     }
 
     .toast {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: #1e293b; color: white; padding: 10px 20px;
-      border-radius: 10px; font-size: 13px; font-weight: 600;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 10000;
-      opacity: 0; transition: opacity 0.3s;
+      background: #1e293b; color: white; padding: 10px 20px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 10000; opacity: 0; transition: opacity 0.3s;
     }
     .toast.show { opacity: 1; }
 
-    /* Result count */
-    .result-count {
-      font-size: 11px; color: #94a3b8; padding: 0 0 8px;
+    .result-count { font-size: 11px; color: #94a3b8; padding: 0 0 8px; }
+
+    /* Loading spinner */
+    .loading { text-align: center; padding: 60px 16px; color: #94a3b8; }
+    .loading .spinner {
+      width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #6366f1;
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px;
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-<div id="app"></div>
+<div id="app">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p>Loading bathrooms...</p>
+  </div>
+</div>
 
 <script>
 // ============================================================================
-// THRONE ROOM - Bathroom Rating App
+// THRONE ROOM - Bathroom Rating App (with Supabase shared database!)
 // ============================================================================
-
+// NOW WITH A REAL DATABASE!
+// All bathrooms and reviews are stored in Supabase (a cloud database).
+// This means everyone who visits the app sees the same data.
+// When someone adds a review, everyone else will see it too!
 // ============================================================================
-// PRE-LOADED BATHROOM DATABASE
-// ============================================================================
-// A big list of well-known, real places across the US so the app feels
-// populated right away. Users can still add their own on top of these.
-
-const DEFAULT_BATHROOMS = [
-  // ---- NEW YORK CITY ----
-  { id: 1, name: "Bryant Park Restroom", location: "Between 5th & 6th Ave, NYC", lat: 40.7536, lng: -73.9832,
-    ratings: [
-      { user: "Jamie F.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "The BEST public bathroom in NYC. Fresh flowers, attendant, classical music!", date: "2026-03-23", photos: [] },
-      { user: "Quinn D.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "I didn't know public restrooms could be this nice.", date: "2026-03-20", photos: [] },
-      { user: "Avery N.", cleanliness: 5, accessibility: 4, vibe: 5, comment: "A religious experience. 10/10.", date: "2026-03-17", photos: [] },
-    ], tags: ["public", "free", "accessible", "legendary"], hours: "7am - 11pm" },
-  { id: 2, name: "The Ace Hotel Lobby", location: "20 W 29th St, NYC", lat: 40.7454, lng: -73.9882,
-    ratings: [
-      { user: "Jordan R.", cleanliness: 5, accessibility: 4, vibe: 5, comment: "Aesthetic AF. Great vibes, smells like eucalyptus.", date: "2026-03-22", photos: [] },
-      { user: "Casey L.", cleanliness: 4, accessibility: 4, vibe: 5, comment: "Bougie bathroom energy. Love it.", date: "2026-03-10", photos: [] },
-    ], tags: ["hotel", "free", "bougie"], hours: "24/7" },
-  { id: 3, name: "Central Park Restroom", location: "Near Bethesda Fountain, NYC", lat: 40.7736, lng: -73.9712,
-    ratings: [
-      { user: "Alex M.", cleanliness: 4, accessibility: 5, vibe: 4, comment: "Surprisingly clean for a park bathroom.", date: "2026-03-20", photos: [] },
-      { user: "Sam K.", cleanliness: 3, accessibility: 5, vibe: 3, comment: "Decent. Gets crowded on weekends.", date: "2026-03-18", photos: [] },
-    ], tags: ["public", "free", "park", "accessible"], hours: "6am - 10pm" },
-  { id: 4, name: "Grand Central Terminal", location: "Lower Level East Side, NYC", lat: 40.7527, lng: -73.9772,
-    ratings: [
-      { user: "Morgan W.", cleanliness: 3, accessibility: 3, vibe: 2, comment: "It works in a pinch. Hectic during rush hour.", date: "2026-03-21", photos: [] },
-    ], tags: ["public", "free", "transit"], hours: "5:15am - 2am" },
-  { id: 5, name: "Whole Foods Columbus Circle", location: "10 Columbus Circle, NYC", lat: 40.7685, lng: -73.9822,
-    ratings: [
-      { user: "Taylor B.", cleanliness: 4, accessibility: 4, vibe: 3, comment: "Clean and reliable. Line can be long at lunch.", date: "2026-03-19", photos: [] },
-      { user: "Drew P.", cleanliness: 4, accessibility: 5, vibe: 3, comment: "Solid choice. Family restroom available too.", date: "2026-03-14", photos: [] },
-    ], tags: ["store", "free", "family-friendly"], hours: "7am - 10pm" },
-  { id: 6, name: "Starbucks Times Square", location: "1585 Broadway, NYC", lat: 40.7590, lng: -73.9845,
-    ratings: [
-      { user: "Nicky P.", cleanliness: 2, accessibility: 3, vibe: 1, comment: "Absolute chaos. Only if you're desperate.", date: "2026-03-20", photos: [] },
-      { user: "Dana M.", cleanliness: 2, accessibility: 2, vibe: 1, comment: "The line is 20 minutes long and the lock is broken.", date: "2026-03-15", photos: [] },
-    ], tags: ["coffee", "free"], hours: "5am - 11pm" },
-  { id: 7, name: "The Met Museum", location: "1000 5th Ave, NYC", lat: 40.7794, lng: -73.9632,
-    ratings: [
-      { user: "Sasha R.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "Very clean, well maintained. The downstairs ones are less crowded.", date: "2026-03-22", photos: [] },
-    ], tags: ["museum", "accessible"], hours: "10am - 5pm" },
-  { id: 8, name: "Penn Station Amtrak Lounge", location: "8th Ave & 31st St, NYC", lat: 40.7506, lng: -73.9935,
-    ratings: [
-      { user: "Robin L.", cleanliness: 4, accessibility: 4, vibe: 3, comment: "Much better than the main station bathrooms. Worth finding.", date: "2026-03-18", photos: [] },
-    ], tags: ["transit", "accessible"], hours: "5am - 1am" },
-  { id: 9, name: "Chelsea Market", location: "75 9th Ave, NYC", lat: 40.7425, lng: -74.0060,
-    ratings: [
-      { user: "Kai J.", cleanliness: 4, accessibility: 3, vibe: 4, comment: "Industrial chic vibes. Can be crowded on weekends.", date: "2026-03-21", photos: [] },
-    ], tags: ["store", "free"], hours: "7am - 9pm" },
-  { id: 10, name: "Hudson Yards", location: "20 Hudson Yards, NYC", lat: 40.7539, lng: -74.0018,
-    ratings: [
-      { user: "Priya S.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "Luxury mall bathrooms. Marble everything.", date: "2026-03-19", photos: [] },
-      { user: "Liam C.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "Extremely clean. Almost too fancy to use.", date: "2026-03-16", photos: [] },
-    ], tags: ["mall", "free", "accessible", "bougie"], hours: "10am - 9pm" },
-
-  // ---- LOS ANGELES ----
-  { id: 11, name: "The Broad Museum", location: "221 S Grand Ave, Los Angeles", lat: 34.0544, lng: -118.2508,
-    ratings: [
-      { user: "Mika T.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "Museum-quality bathroom. Literally. Spotless.", date: "2026-03-18", photos: [] },
-      { user: "Leo R.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "Super clean. The architecture makes you feel fancy.", date: "2026-03-12", photos: [] },
-    ], tags: ["museum", "free", "accessible", "bougie"], hours: "10am - 5pm" },
-  { id: 12, name: "The Grove", location: "189 The Grove Dr, Los Angeles", lat: 34.0722, lng: -118.3578,
-    ratings: [
-      { user: "Sofia V.", cleanliness: 4, accessibility: 5, vibe: 4, comment: "Good outdoor mall bathrooms. Clean and well-lit.", date: "2026-03-20", photos: [] },
-      { user: "Marcus J.", cleanliness: 4, accessibility: 5, vibe: 3, comment: "Reliable. Always have paper towels.", date: "2026-03-17", photos: [] },
-    ], tags: ["mall", "free", "accessible", "family-friendly"], hours: "10am - 9pm" },
-  { id: 13, name: "Griffith Observatory", location: "2800 E Observatory Rd, LA", lat: 34.1184, lng: -118.3004,
-    ratings: [
-      { user: "Zara H.", cleanliness: 3, accessibility: 3, vibe: 4, comment: "Basic but the view on your walk over makes up for it.", date: "2026-03-19", photos: [] },
-    ], tags: ["public", "free", "park"], hours: "12pm - 10pm" },
-  { id: 14, name: "Starbucks Reserve DTLA", location: "750 S Broadway, Los Angeles", lat: 34.0435, lng: -118.2553,
-    ratings: [
-      { user: "Noah B.", cleanliness: 4, accessibility: 4, vibe: 4, comment: "Better than your average Starbucks. Single-occupancy.", date: "2026-03-21", photos: [] },
-    ], tags: ["coffee", "free"], hours: "6am - 8pm" },
-  { id: 15, name: "Santa Monica Pier Restroom", location: "200 Santa Monica Pier, CA", lat: 34.0094, lng: -118.4973,
-    ratings: [
-      { user: "Ella W.", cleanliness: 2, accessibility: 3, vibe: 2, comment: "Beach bathrooms. You know what you're getting into.", date: "2026-03-18", photos: [] },
-      { user: "Jay T.", cleanliness: 2, accessibility: 2, vibe: 2, comment: "Bring your own TP. Just a heads up.", date: "2026-03-14", photos: [] },
-    ], tags: ["public", "free", "park"], hours: "6am - 10pm" },
-
-  // ---- CHICAGO ----
-  { id: 16, name: "Art Institute of Chicago", location: "111 S Michigan Ave, Chicago", lat: 41.8796, lng: -87.6237,
-    ratings: [
-      { user: "Carmen D.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "World-class museum, world-class bathrooms.", date: "2026-03-22", photos: [] },
-    ], tags: ["museum", "accessible", "bougie"], hours: "11am - 5pm" },
-  { id: 17, name: "Millennium Park", location: "201 E Randolph St, Chicago", lat: 41.8827, lng: -87.6233,
-    ratings: [
-      { user: "Peter N.", cleanliness: 3, accessibility: 4, vibe: 3, comment: "Park bathrooms but well maintained for the volume of tourists.", date: "2026-03-20", photos: [] },
-    ], tags: ["public", "free", "park", "accessible"], hours: "6am - 11pm" },
-  { id: 18, name: "Water Tower Place", location: "835 N Michigan Ave, Chicago", lat: 41.8979, lng: -87.6236,
-    ratings: [
-      { user: "Lisa K.", cleanliness: 4, accessibility: 5, vibe: 4, comment: "Mag Mile mall. Bathrooms on 4th floor are least crowded.", date: "2026-03-19", photos: [] },
-    ], tags: ["mall", "free", "accessible"], hours: "10am - 8pm" },
-  { id: 19, name: "Navy Pier", location: "600 E Grand Ave, Chicago", lat: 41.8917, lng: -87.6063,
-    ratings: [
-      { user: "Hank M.", cleanliness: 3, accessibility: 4, vibe: 2, comment: "Tourist trap bathroom quality. But it's there.", date: "2026-03-18", photos: [] },
-    ], tags: ["public", "free", "family-friendly"], hours: "10am - 10pm" },
-
-  // ---- SAN FRANCISCO ----
-  { id: 20, name: "Ferry Building", location: "1 Ferry Building, San Francisco", lat: 37.7955, lng: -122.3937,
-    ratings: [
-      { user: "Michelle Y.", cleanliness: 4, accessibility: 4, vibe: 4, comment: "Nice and clean. The whole building smells like fresh bread.", date: "2026-03-21", photos: [] },
-    ], tags: ["store", "free", "accessible"], hours: "7am - 7pm" },
-  { id: 21, name: "SF Public Library Main", location: "100 Larkin St, San Francisco", lat: 37.7785, lng: -122.4156,
-    ratings: [
-      { user: "Theo G.", cleanliness: 3, accessibility: 5, vibe: 3, comment: "Public library = public bathrooms. They're fine.", date: "2026-03-20", photos: [] },
-    ], tags: ["public", "free", "library", "accessible"], hours: "9am - 6pm" },
-  { id: 22, name: "Salesforce Transit Center", location: "425 Mission St, San Francisco", lat: 37.7897, lng: -122.3972,
-    ratings: [
-      { user: "Jade L.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "Brand new, incredibly clean. The rooftop park is a bonus.", date: "2026-03-22", photos: [] },
-    ], tags: ["transit", "free", "accessible", "bougie"], hours: "6am - 9pm" },
-
-  // ---- SEATTLE ----
-  { id: 23, name: "Pike Place Market", location: "85 Pike St, Seattle", lat: 47.6097, lng: -122.3425,
-    ratings: [
-      { user: "Chris H.", cleanliness: 3, accessibility: 3, vibe: 3, comment: "Busy but functional. Better than most tourist spots.", date: "2026-03-19", photos: [] },
-    ], tags: ["public", "free"], hours: "6am - 6pm" },
-  { id: 24, name: "Seattle Central Library", location: "1000 4th Ave, Seattle", lat: 47.6067, lng: -122.3325,
-    ratings: [
-      { user: "Elena P.", cleanliness: 4, accessibility: 5, vibe: 5, comment: "The building itself is a work of art. Bathrooms match.", date: "2026-03-21", photos: [] },
-    ], tags: ["public", "free", "library", "accessible"], hours: "10am - 8pm" },
-
-  // ---- MIAMI ----
-  { id: 25, name: "Bayside Marketplace", location: "401 Biscayne Blvd, Miami", lat: 25.7782, lng: -80.1867,
-    ratings: [
-      { user: "Carlos M.", cleanliness: 3, accessibility: 4, vibe: 3, comment: "Standard mall bathroom. AC is a blessing in Miami heat.", date: "2026-03-20", photos: [] },
-    ], tags: ["mall", "free", "accessible"], hours: "10am - 10pm" },
-  { id: 26, name: "South Beach Public Restroom", location: "Ocean Dr & 10th St, Miami Beach", lat: 25.7781, lng: -80.1305,
-    ratings: [
-      { user: "Valentina R.", cleanliness: 2, accessibility: 3, vibe: 2, comment: "Beach bathroom. Sandy floors, no expectations.", date: "2026-03-19", photos: [] },
-    ], tags: ["public", "free", "park"], hours: "6am - 10pm" },
-
-  // ---- AUSTIN ----
-  { id: 27, name: "Whole Foods Flagship", location: "525 N Lamar Blvd, Austin", lat: 30.2706, lng: -97.7533,
-    ratings: [
-      { user: "Hannah T.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "The mothership Whole Foods. Bathrooms are spotless.", date: "2026-03-22", photos: [] },
-      { user: "Brandon K.", cleanliness: 4, accessibility: 5, vibe: 4, comment: "Clean, well-stocked. Multiple stalls.", date: "2026-03-18", photos: [] },
-    ], tags: ["store", "free", "accessible", "family-friendly"], hours: "7am - 10pm" },
-  { id: 28, name: "Barton Springs Pool", location: "2201 Barton Springs Rd, Austin", lat: 30.2640, lng: -97.7711,
-    ratings: [
-      { user: "Dustin F.", cleanliness: 2, accessibility: 2, vibe: 3, comment: "Outdoor pool changing rooms. Functional but bare bones.", date: "2026-03-17", photos: [] },
-    ], tags: ["public", "park"], hours: "5am - 10pm" },
-
-  // ---- DENVER ----
-  { id: 29, name: "Union Station", location: "1701 Wynkoop St, Denver", lat: 39.7527, lng: -104.9997,
-    ratings: [
-      { user: "Mel C.", cleanliness: 4, accessibility: 4, vibe: 5, comment: "Beautifully renovated. The whole station is gorgeous.", date: "2026-03-21", photos: [] },
-    ], tags: ["transit", "free", "accessible", "bougie"], hours: "24/7" },
-  { id: 30, name: "REI Denver Flagship", location: "1416 Platte St, Denver", lat: 39.7583, lng: -105.0069,
-    ratings: [
-      { user: "Kit W.", cleanliness: 4, accessibility: 4, vibe: 4, comment: "Clean and outdoorsy. On brand for REI.", date: "2026-03-19", photos: [] },
-    ], tags: ["store", "free", "accessible"], hours: "9am - 9pm" },
-
-  // ---- PORTLAND ----
-  { id: 31, name: "Powell's Books", location: "1005 W Burnside St, Portland", lat: 45.5231, lng: -122.6815,
-    ratings: [
-      { user: "Iris V.", cleanliness: 3, accessibility: 3, vibe: 4, comment: "Bathroom in a bookstore. What more could you want?", date: "2026-03-20", photos: [] },
-    ], tags: ["store", "free"], hours: "10am - 9pm" },
-
-  // ---- OKLAHOMA CITY ----
-  { id: 41, name: "Scissortail Park Restroom", location: "300 SW 7th St, Oklahoma City", lat: 35.4634, lng: -97.5171,
-    ratings: [
-      { user: "Brooke A.", cleanliness: 4, accessibility: 5, vibe: 4, comment: "Brand new park, brand new bathrooms. Really well maintained.", date: "2026-03-22", photos: [] },
-      { user: "Tyler J.", cleanliness: 4, accessibility: 5, vibe: 4, comment: "Great park bathrooms. Clean and modern. OKC did this right.", date: "2026-03-18", photos: [] },
-    ], tags: ["public", "free", "park", "accessible"], hours: "6am - 11pm" },
-  { id: 42, name: "Classen Curve Target", location: "5801 N Classen Blvd, OKC", lat: 35.5067, lng: -97.5322,
-    ratings: [
-      { user: "Dana W.", cleanliness: 4, accessibility: 5, vibe: 3, comment: "Reliable Target bathroom. Family restroom available.", date: "2026-03-20", photos: [] },
-    ], tags: ["store", "free", "accessible", "family-friendly"], hours: "8am - 10pm" },
-  { id: 43, name: "Oklahoma City National Memorial Museum", location: "620 N Harvey Ave, OKC", lat: 35.4731, lng: -97.5170,
-    ratings: [
-      { user: "Rachel K.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "Respectfully maintained. Very clean, quiet.", date: "2026-03-21", photos: [] },
-    ], tags: ["museum", "accessible"], hours: "9am - 6pm" },
-  { id: 44, name: "Whole Foods OKC", location: "6001 N Western Ave, OKC", lat: 35.5094, lng: -97.5294,
-    ratings: [
-      { user: "Kevin S.", cleanliness: 4, accessibility: 4, vibe: 3, comment: "Clean as you'd expect from Whole Foods. Never a wait.", date: "2026-03-19", photos: [] },
-    ], tags: ["store", "free", "accessible"], hours: "7am - 9pm" },
-  { id: 45, name: "Paycom Center", location: "100 W Reno Ave, OKC", lat: 35.4634, lng: -97.5151,
-    ratings: [
-      { user: "Marcus T.", cleanliness: 3, accessibility: 4, vibe: 3, comment: "Event venue bathrooms. Fine during Thunder games, hectic at halftime.", date: "2026-03-20", photos: [] },
-    ], tags: ["public", "accessible"], hours: "Event hours" },
-  { id: 46, name: "The Paseo Arts District", location: "NW 30th & Dewey, OKC", lat: 35.4917, lng: -97.5308,
-    ratings: [
-      { user: "Lina M.", cleanliness: 3, accessibility: 3, vibe: 5, comment: "Artsy neighborhood. Gallery bathrooms during First Friday are fun.", date: "2026-03-15", photos: [] },
-    ], tags: ["public", "free"], hours: "Varies by gallery" },
-  { id: 47, name: "Penn Square Mall", location: "1901 NW Expressway, OKC", lat: 35.5175, lng: -97.5593,
-    ratings: [
-      { user: "Jenna F.", cleanliness: 4, accessibility: 5, vibe: 3, comment: "Standard mall bathrooms. The ones near Dillard's are the cleanest.", date: "2026-03-21", photos: [] },
-      { user: "Chris B.", cleanliness: 3, accessibility: 5, vibe: 3, comment: "Family restroom on the second floor is the move.", date: "2026-03-17", photos: [] },
-    ], tags: ["mall", "free", "accessible", "family-friendly"], hours: "10am - 9pm" },
-  { id: 48, name: "Myriad Botanical Gardens", location: "301 W Reno Ave, OKC", lat: 35.4647, lng: -97.5193,
-    ratings: [
-      { user: "Sara P.", cleanliness: 4, accessibility: 4, vibe: 5, comment: "Lovely gardens and clean restrooms. The Crystal Bridge is gorgeous.", date: "2026-03-22", photos: [] },
-    ], tags: ["public", "free", "park", "accessible"], hours: "6am - 11pm" },
-  { id: 49, name: "Factory Obscura", location: "25 NW 9th St, OKC", lat: 35.4726, lng: -97.5175,
-    ratings: [
-      { user: "Ava R.", cleanliness: 4, accessibility: 3, vibe: 5, comment: "Even the bathroom is an art experience. On brand for this place.", date: "2026-03-19", photos: [] },
-    ], tags: ["museum", "free"], hours: "10am - 8pm" },
-  { id: 50, name: "Automobile Alley Starbucks", location: "700 N Broadway Ave, OKC", lat: 35.4766, lng: -97.5130,
-    ratings: [
-      { user: "Mike D.", cleanliness: 3, accessibility: 3, vibe: 3, comment: "Standard Starbucks bathroom. Clean enough, door code on receipt.", date: "2026-03-20", photos: [] },
-    ], tags: ["coffee", "free"], hours: "5:30am - 8pm" },
-
-  // ---- NASHVILLE ----
-  { id: 32, name: "The Parthenon", location: "2500 West End Ave, Nashville", lat: 36.1497, lng: -86.8134,
-    ratings: [
-      { user: "Wade S.", cleanliness: 3, accessibility: 4, vibe: 3, comment: "Park bathrooms next to a full-size Parthenon replica. Wild.", date: "2026-03-18", photos: [] },
-    ], tags: ["public", "free", "park", "accessible"], hours: "9am - 4:30pm" },
-
-  // ---- NATIONAL CHAINS (various locations) ----
-  { id: 33, name: "Target (General)", location: "Most locations nationwide", lat: 40.7484, lng: -73.9856,
-    ratings: [
-      { user: "Jess M.", cleanliness: 4, accessibility: 5, vibe: 3, comment: "Consistently clean. Family restroom usually available. Reliable pick.", date: "2026-03-21", photos: [] },
-      { user: "Pat H.", cleanliness: 4, accessibility: 5, vibe: 3, comment: "My default 'I need a bathroom' choice in any city.", date: "2026-03-18", photos: [] },
-    ], tags: ["store", "free", "accessible", "family-friendly"], hours: "8am - 10pm" },
-  { id: 34, name: "Nordstrom (General)", location: "Department stores nationwide", lat: 40.7626, lng: -73.9740,
-    ratings: [
-      { user: "Diana L.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "The gold standard of retail bathrooms. Always immaculate.", date: "2026-03-22", photos: [] },
-      { user: "Rachel W.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "Lounge area, nice soap, clean. Worth the detour.", date: "2026-03-19", photos: [] },
-    ], tags: ["store", "free", "accessible", "bougie", "legendary"], hours: "10am - 9pm" },
-  { id: 35, name: "Buc-ee's", location: "Various locations, TX & Southeast", lat: 30.0915, lng: -95.6038,
-    ratings: [
-      { user: "Tommy R.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "The cleanest gas station bathrooms in the WORLD. 100 stalls. Not joking.", date: "2026-03-23", photos: [] },
-      { user: "Sarah M.", cleanliness: 5, accessibility: 5, vibe: 5, comment: "Legendary. An attendant cleaning at all times. Sparkling.", date: "2026-03-20", photos: [] },
-      { user: "Jake D.", cleanliness: 5, accessibility: 5, vibe: 4, comment: "If all gas stations were like this the world would be a better place.", date: "2026-03-17", photos: [] },
-    ], tags: ["gas-station", "free", "accessible", "legendary", "family-friendly"], hours: "24/7" },
-  { id: 36, name: "Costco (General)", location: "Warehouse stores nationwide", lat: 40.7371, lng: -74.0004,
-    ratings: [
-      { user: "Greg B.", cleanliness: 3, accessibility: 4, vibe: 2, comment: "Utilitarian but functional. Usually clean enough.", date: "2026-03-19", photos: [] },
-    ], tags: ["store", "free", "accessible"], hours: "10am - 8:30pm" },
-  { id: 37, name: "Starbucks (General)", location: "Locations everywhere", lat: 40.7580, lng: -73.9855,
-    ratings: [
-      { user: "Emma S.", cleanliness: 3, accessibility: 3, vibe: 3, comment: "Wildly inconsistent. Some are great, some are nightmares. YMMV.", date: "2026-03-21", photos: [] },
-    ], tags: ["coffee", "free"], hours: "5am - 9pm" },
-  { id: 38, name: "Chick-fil-A (General)", location: "Locations nationwide", lat: 40.7527, lng: -73.9773,
-    ratings: [
-      { user: "Amy Z.", cleanliness: 5, accessibility: 4, vibe: 4, comment: "Always spotless. Say what you will, their bathrooms are top tier.", date: "2026-03-22", photos: [] },
-      { user: "Derek N.", cleanliness: 5, accessibility: 4, vibe: 3, comment: "Consistently the cleanest fast food bathroom.", date: "2026-03-17", photos: [] },
-    ], tags: ["restaurant", "free", "family-friendly"], hours: "6:30am - 10pm" },
-  { id: 39, name: "Hotel Lobbies (General Tip)", location: "Any major hotel — just walk in confidently", lat: 40.7589, lng: -73.9790,
-    ratings: [
-      { user: "Travel Pro", cleanliness: 4, accessibility: 4, vibe: 5, comment: "Life hack: walk into any nice hotel lobby like you belong there. Bathroom is usually near the elevator. Works 99% of the time.", date: "2026-03-23", photos: [] },
-    ], tags: ["hotel", "free", "bougie"], hours: "24/7" },
-  { id: 40, name: "REI (General)", location: "Outdoor stores nationwide", lat: 40.7411, lng: -73.9897,
-    ratings: [
-      { user: "Sage T.", cleanliness: 4, accessibility: 4, vibe: 4, comment: "Clean, never crowded. Usually near the back of the store.", date: "2026-03-20", photos: [] },
-    ], tags: ["store", "free", "accessible"], hours: "10am - 9pm" },
-];
 
 
 // ============================================================================
-// APP STATE & DATA PERSISTENCE
+// DATABASE CONNECTION
 // ============================================================================
+// We talk directly to the Supabase REST API using fetch() — no library needed.
+// This is simpler and works everywhere.
+//
+// The "anon key" is safe to have in public code — it's like a library card
+// that identifies your project. The row-level security policies in the
+// database control what people can actually do (read & add, but not delete).
 
-function loadBathrooms() {
-  try {
-    const saved = localStorage.getItem("throneroom_bathrooms_v2");
-    if (saved) return JSON.parse(saved);
-  } catch (e) {}
-  return DEFAULT_BATHROOMS;
-}
+const API_URL = "https://ckxvdwgktwzfxamtlfui.supabase.co/rest/v1";
+const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreHZkd2drdHd6ZnhhbXRsZnVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NjgwOTIsImV4cCI6MjA5MDA0NDA5Mn0.GEAR5FfUnAVPrhE07eK9Vms-MdUNpm21JDb6tLErL00";
 
-function saveBathrooms() {
-  try {
-    localStorage.setItem("throneroom_bathrooms_v2", JSON.stringify(state.bathrooms));
-  } catch (e) {}
-}
+// Standard headers that every request to Supabase needs
+const HEADERS = {
+  "apikey": API_KEY,
+  "Authorization": "Bearer " + API_KEY,
+  "Content-Type": "application/json",
+};
+
+
+// ============================================================================
+// APP STATE
+// ============================================================================
 
 const state = {
-  bathrooms: loadBathrooms(),
+  bathrooms: [],
+  loading: true,
+  loadError: null,
   view: "home",
   selectedId: null,
   tab: "map",
@@ -713,7 +324,120 @@ const state = {
   newLat: null,
   newLng: null,
   locating: false,
+  submitting: false,
 };
+
+
+// ============================================================================
+// DATABASE FUNCTIONS (using fetch — simple HTTP requests)
+// ============================================================================
+// fetch() is built into every browser. It sends an HTTP request to a URL
+// and returns the response. Think of it like Python's requests.get() / requests.post().
+//
+// async/await: "await" means "wait for this to finish before moving on."
+// Similar to Python's: result = await fetch_data()
+
+// Load all bathrooms AND their reviews from the database
+async function loadFromDatabase() {
+  try {
+    // Fetch all bathrooms (GET request)
+    const bathroomRes = await fetch(API_URL + "/bathrooms?select=*&order=id", {
+      headers: HEADERS,
+    });
+    if (!bathroomRes.ok) throw new Error("Failed to fetch bathrooms: " + bathroomRes.status + " " + bathroomRes.statusText);
+    const bathrooms = await bathroomRes.json();
+
+    // Fetch all reviews (GET request)
+    const reviewRes = await fetch(API_URL + "/reviews?select=*&order=created_at", {
+      headers: HEADERS,
+    });
+    if (!reviewRes.ok) throw new Error("Failed to fetch reviews: " + reviewRes.status + " " + reviewRes.statusText);
+    const reviews = await reviewRes.json();
+
+    // Combine: attach each review to its bathroom
+    state.bathrooms = bathrooms.map(b => ({
+      ...b,
+      tags: b.tags || [],
+      ratings: reviews
+        .filter(r => r.bathroom_id === b.id)
+        .map(r => ({
+          user: r.user_name,
+          cleanliness: r.cleanliness,
+          accessibility: r.accessibility,
+          vibe: r.vibe,
+          comment: r.comment || "",
+          date: r.date,
+          photos: [],
+        })),
+    }));
+
+    state.loading = false;
+    state.loadError = null;
+    render();
+  } catch (err) {
+    console.error("Database error:", err);
+    state.loading = false;
+    state.loadError = err.message || String(err);
+    render();
+  }
+}
+
+// Save a new bathroom to the database (POST request)
+async function saveBathroomToDb(bathroom) {
+  try {
+    const res = await fetch(API_URL + "/bathrooms?select=*", {
+      method: "POST",
+      headers: { ...HEADERS, "Prefer": "return=representation" },
+      body: JSON.stringify({
+        name: bathroom.name,
+        location: bathroom.location,
+        lat: bathroom.lat,
+        lng: bathroom.lng,
+        tags: bathroom.tags,
+        hours: bathroom.hours,
+      }),
+    });
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error("Save failed: " + res.status + " " + errBody);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data[0] : data;
+  } catch (err) {
+    console.error("Failed to save bathroom:", err);
+    showToast("Couldn't save. Please try again.");
+    return null;
+  }
+}
+
+// Save a new review to the database (POST request)
+async function saveReviewToDb(bathroomId, review) {
+  try {
+    const res = await fetch(API_URL + "/reviews?select=*", {
+      method: "POST",
+      headers: { ...HEADERS, "Prefer": "return=representation" },
+      body: JSON.stringify({
+        bathroom_id: bathroomId,
+        user_name: review.user,
+        cleanliness: review.cleanliness,
+        accessibility: review.accessibility,
+        vibe: review.vibe,
+        comment: review.comment,
+        date: review.date,
+      }),
+    });
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error("Save failed: " + res.status + " " + errBody);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data[0] : data;
+  } catch (err) {
+    console.error("Failed to save review:", err);
+    showToast("Couldn't save review. Please try again.");
+    return null;
+  }
+}
 
 
 // ============================================================================
@@ -724,43 +448,36 @@ function getAvg(ratings, field) {
   if (!ratings.length) return 0;
   return ratings.reduce((sum, r) => sum + r[field], 0) / ratings.length;
 }
-
 function getOverallAvg(ratings) {
   if (!ratings.length) return 0;
   return (getAvg(ratings, "cleanliness") + getAvg(ratings, "accessibility") + getAvg(ratings, "vibe")) / 3;
 }
-
 function getRatingColor(avg) {
   if (avg >= 4.5) return "color-green";
   if (avg >= 3.5) return "color-amber";
   if (avg >= 2.5) return "color-orange";
   return "color-red";
 }
-
 function getRatingHex(avg) {
   if (avg >= 4.5) return "#10b981";
   if (avg >= 3.5) return "#f59e0b";
   if (avg >= 2.5) return "#f97316";
   return "#ef4444";
 }
-
 function starsHTML(rating) {
   const full = Math.floor(rating);
   const half = rating - full >= 0.25 && rating - full < 0.75;
   const empty = 5 - full - (half ? 1 : 0);
   return "★".repeat(full) + (half ? '<span style="opacity:0.6">★</span>' : '') + '<span style="opacity:0.2">' + "★".repeat(Math.max(0,empty)) + '</span>';
 }
-
 function escapeHTML(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
 }
-
 function tagHTML(tag) {
   return `<span class="tag tag-${tag}">${escapeHTML(tag)}</span>`;
 }
-
 function getFiltered() {
   let list = [...state.bathrooms];
   if (state.searchQuery) {
@@ -776,64 +493,48 @@ function getFiltered() {
   else list.sort((a, b) => a.name.localeCompare(b.name));
   return list;
 }
-
 function showToast(message) {
   let toast = document.getElementById("toast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "toast";
-    toast.className = "toast";
-    document.body.appendChild(toast);
-  }
+  if (!toast) { toast = document.createElement("div"); toast.id = "toast"; toast.className = "toast"; document.body.appendChild(toast); }
   toast.textContent = message;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2500);
 }
-
-function todayStr() {
-  return new Date().toISOString().split("T")[0];
-}
+function todayStr() { return new Date().toISOString().split("T")[0]; }
 
 
 // ============================================================================
-// MAP MANAGEMENT
+// MAP
 // ============================================================================
 
 let leafletMap = null;
 let mapMarkers = [];
 
 function initMap() {
+  if (typeof L === "undefined") return;  // Leaflet not loaded yet — skip safely
   if (leafletMap) { updateMapMarkers(); return; }
   const mapEl = document.getElementById("map");
   if (!mapEl) return;
-
   leafletMap = L.map("map", { zoomControl: true, attributionControl: true }).setView([40.758, -73.98], 13);
-
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
+    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19,
   }).addTo(leafletMap);
-
   updateMapMarkers();
   fitMapToMarkers();
 }
-
 function updateMapMarkers() {
-  if (!leafletMap) return;
+  if (!leafletMap || typeof L === "undefined") return;
   mapMarkers.forEach(m => leafletMap.removeLayer(m));
   mapMarkers = [];
-  const filtered = getFiltered();
-
-  filtered.forEach(b => {
+  getFiltered().forEach(b => {
     const avg = getOverallAvg(b.ratings);
-    const color = getRatingHex(avg);
     const icon = L.divIcon({
       className: "",
-      html: `<div class="custom-marker" style="background:${color}">🚽</div>`,
+      html: `<div class="custom-marker" style="background:${getRatingHex(avg)}">🚽</div>`,
       iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20],
     });
     const marker = L.marker([b.lat, b.lng], { icon }).addTo(leafletMap);
-    const popupHTML = `
+    marker.bindPopup(`
       <div class="bathroom-popup">
         <h3>${escapeHTML(b.name)}</h3>
         <div class="location">${escapeHTML(b.location)}</div>
@@ -842,34 +543,53 @@ function updateMapMarkers() {
         <div style="font-size:11px;color:#94a3b8">${b.ratings.length} review${b.ratings.length !== 1 ? "s" : ""}</div>
         <button class="view-btn" onclick="openDetail(${b.id})">View Details</button>
       </div>
-    `;
-    marker.bindPopup(popupHTML);
+    `);
     mapMarkers.push(marker);
   });
 }
-
 function fitMapToMarkers() {
-  if (!leafletMap || mapMarkers.length === 0) return;
-  const group = L.featureGroup(mapMarkers);
-  leafletMap.fitBounds(group.getBounds().pad(0.1));
+  if (!leafletMap || mapMarkers.length === 0 || typeof L === "undefined") return;
+  leafletMap.fitBounds(L.featureGroup(mapMarkers).getBounds().pad(0.1));
 }
-
 function destroyMap() {
   if (leafletMap) { leafletMap.remove(); leafletMap = null; mapMarkers = []; }
 }
 
 
 // ============================================================================
-// RENDER FUNCTIONS
-// ============================================================================
-// KEY FIX: Instead of re-rendering the ENTIRE page when the search query
-// changes, we now only update the list/map content. This prevents the
-// search input from losing focus (because it doesn't get destroyed and
-// recreated on each keystroke).
+// RENDER
 // ============================================================================
 
 function render() {
   const app = document.getElementById("app");
+
+  if (state.loading) {
+    app.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading bathrooms...</p></div>`;
+    return;
+  }
+
+  if (state.loadError) {
+    app.innerHTML = `
+      <div class="loading">
+        <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+        <p style="font-weight:600;margin-bottom:8px">Couldn't load data</p>
+        <p style="font-size:12px;color:#94a3b8;max-width:300px;margin:0 auto 16px">${escapeHTML(state.loadError)}</p>
+        <button onclick="state.loading=true;state.loadError=null;render();loadFromDatabase();" style="padding:8px 20px;background:#6366f1;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer">Try Again</button>
+      </div>
+    `;
+    return;
+  }
+
+  if (state.loadError) {
+    app.innerHTML = `
+      <div class="loading">
+        <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+        <p style="font-weight:700;margin-bottom:8px">Couldn't load data</p>
+        <p style="font-size:12px;color:#94a3b8;max-width:300px;margin:0 auto 16px">${escapeHTML(state.loadError)}</p>
+        <button onclick="state.loadError=null;state.loading=true;render();loadFromDatabase();" style="padding:8px 20px;background:#6366f1;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer">Try Again</button>
+      </div>`;
+    return;
+  }
 
   if (state.view === "detail") {
     destroyMap();
@@ -883,31 +603,19 @@ function render() {
     destroyMap();
     app.innerHTML = renderHome();
     attachHomeEvents();
-    if (state.tab === "map") {
-      setTimeout(initMap, 50);
-    }
+    if (state.tab === "map") setTimeout(initMap, 50);
   }
 }
 
-// This function ONLY updates the list content without touching the header/search bar.
-// This is what fixes the search input focus bug!
 function renderListOnly() {
-  const listContainer = document.getElementById("listContent");
-  if (!listContainer) return;
-  const filtered = getFiltered();
-  listContainer.innerHTML = renderListCards(filtered);
+  const el = document.getElementById("listContent");
+  if (!el) return;
+  el.innerHTML = renderListCards(getFiltered());
   attachCardEvents();
 }
 
 function renderListCards(filtered) {
-  if (filtered.length === 0) {
-    return `
-      <div class="empty-state">
-        <div class="emoji">🚽</div>
-        <p>No bathrooms found</p>
-      </div>
-    `;
-  }
+  if (filtered.length === 0) return `<div class="empty-state"><div class="emoji">🚽</div><p>No bathrooms found</p></div>`;
   return `
     <div class="result-count">${filtered.length} bathroom${filtered.length !== 1 ? "s" : ""} found</div>
     ${filtered.map(b => {
@@ -929,8 +637,6 @@ function renderListCards(filtered) {
 }
 
 function renderHome() {
-  const filtered = getFiltered();
-
   return `
     <div class="header">
       <div class="header-top">
@@ -951,11 +657,7 @@ function renderHome() {
     </div>
     <div class="content">
       ${state.tab === "map" ? `
-        <div class="map-container">
-          <div class="map-wrap">
-            <div id="map"></div>
-          </div>
-        </div>
+        <div class="map-container"><div class="map-wrap"><div id="map"></div></div></div>
       ` : `
         <div class="list-container">
           <div class="sort-bar">
@@ -964,9 +666,7 @@ function renderHome() {
             <button class="sort-btn ${state.sortBy === 'reviews' ? 'active' : ''}" data-sort="reviews">💬 Reviews</button>
             <button class="sort-btn ${state.sortBy === 'name' ? 'active' : ''}" data-sort="name">🔤 Name</button>
           </div>
-          <div id="listContent">
-            ${renderListCards(filtered)}
-          </div>
+          <div id="listContent">${renderListCards(getFiltered())}</div>
         </div>
       `}
     </div>
@@ -977,7 +677,6 @@ function renderDetail() {
   const b = state.bathrooms.find(x => x.id === state.selectedId);
   if (!b) return "";
   const avg = getOverallAvg(b.ratings);
-
   return `
     <div class="detail-view">
       <div class="detail-header">
@@ -993,21 +692,9 @@ function renderDetail() {
       </div>
       <div class="detail-content">
         <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">✨</div>
-            <div class="stat-value">${getAvg(b.ratings, "cleanliness").toFixed(1)}</div>
-            <div class="stat-label">Clean</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">♿</div>
-            <div class="stat-value">${getAvg(b.ratings, "accessibility").toFixed(1)}</div>
-            <div class="stat-label">Accessible</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">💫</div>
-            <div class="stat-value">${getAvg(b.ratings, "vibe").toFixed(1)}</div>
-            <div class="stat-label">Vibe</div>
-          </div>
+          <div class="stat-card"><div class="stat-icon">✨</div><div class="stat-value">${getAvg(b.ratings,"cleanliness").toFixed(1)}</div><div class="stat-label">Clean</div></div>
+          <div class="stat-card"><div class="stat-icon">♿</div><div class="stat-value">${getAvg(b.ratings,"accessibility").toFixed(1)}</div><div class="stat-label">Accessible</div></div>
+          <div class="stat-card"><div class="stat-icon">💫</div><div class="stat-value">${getAvg(b.ratings,"vibe").toFixed(1)}</div><div class="stat-label">Vibe</div></div>
         </div>
         <div class="detail-tags">
           ${b.tags.map(t => tagHTML(t)).join("")}
@@ -1032,11 +719,6 @@ function renderDetail() {
                 <span>💫 ${r.vibe}</span>
               </div>
               ${r.comment ? `<p class="review-comment">${escapeHTML(r.comment)}</p>` : ""}
-              ${r.photos && r.photos.length > 0 ? `
-                <div class="review-photos">
-                  ${r.photos.map(url => `<img class="review-photo" src="${url}" alt="Review photo">`).join("")}
-                </div>
-              ` : ""}
             </div>
           `).join("")}
         </div>
@@ -1049,49 +731,22 @@ function renderReviewForm() {
   return `
     <div class="review-form">
       <input class="form-input" id="reviewNameInput" type="text" placeholder="Your name" value="${escapeHTML(state.reviewName)}">
-      <div class="star-row">
-        <span class="star-label">Cleanliness</span>
-        <div class="star-buttons">${[1,2,3,4,5].map(s => `<button class="star-btn ${s <= state.reviewCleanliness ? 'active' : ''}" data-field="reviewCleanliness" data-val="${s}">★</button>`).join("")}</div>
-      </div>
-      <div class="star-row">
-        <span class="star-label">Accessibility</span>
-        <div class="star-buttons">${[1,2,3,4,5].map(s => `<button class="star-btn ${s <= state.reviewAccessibility ? 'active' : ''}" data-field="reviewAccessibility" data-val="${s}">★</button>`).join("")}</div>
-      </div>
-      <div class="star-row">
-        <span class="star-label">Vibe</span>
-        <div class="star-buttons">${[1,2,3,4,5].map(s => `<button class="star-btn ${s <= state.reviewVibe ? 'active' : ''}" data-field="reviewVibe" data-val="${s}">★</button>`).join("")}</div>
-      </div>
+      <div class="star-row"><span class="star-label">Cleanliness</span><div class="star-buttons">${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=state.reviewCleanliness?'active':''}" data-field="reviewCleanliness" data-val="${s}">★</button>`).join("")}</div></div>
+      <div class="star-row"><span class="star-label">Accessibility</span><div class="star-buttons">${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=state.reviewAccessibility?'active':''}" data-field="reviewAccessibility" data-val="${s}">★</button>`).join("")}</div></div>
+      <div class="star-row"><span class="star-label">Vibe</span><div class="star-buttons">${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=state.reviewVibe?'active':''}" data-field="reviewVibe" data-val="${s}">★</button>`).join("")}</div></div>
       <textarea class="form-input" id="reviewCommentInput" placeholder="Tell us about this bathroom...">${escapeHTML(state.reviewComment)}</textarea>
-      <label class="photo-upload-label">
-        📷 Add photos
-        <input type="file" accept="image/*" multiple id="reviewPhotoInput" style="display:none">
-      </label>
-      ${state.reviewPhotos.length > 0 ? `
-        <div class="photo-previews">
-          ${state.reviewPhotos.map((p, i) => `
-            <div class="photo-preview-wrap">
-              <img class="photo-preview" src="${p}" alt="">
-              <button class="photo-remove" data-photo-idx="${i}">×</button>
-            </div>
-          `).join("")}
-        </div>
-      ` : ""}
-      <button class="submit-btn" id="submitReviewBtn" ${(!state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim()) ? "disabled" : ""}>Submit Review</button>
+      <button class="submit-btn" id="submitReviewBtn" ${(!state.reviewCleanliness||!state.reviewAccessibility||!state.reviewVibe||!state.reviewName.trim()||state.submitting)?'disabled':''}>${state.submitting ? 'Saving...' : 'Submit Review'}</button>
     </div>
   `;
 }
 
 function renderAdd() {
-  const allTags = ["public", "free", "accessible", "hotel", "bougie", "transit", "store", "family-friendly", "coffee", "restaurant", "museum", "mall", "park", "gas-station", "library", "airport", "gym", "bar"];
-
+  const allTags = ["public","free","accessible","hotel","bougie","transit","store","family-friendly","coffee","restaurant","museum","mall","park","gas-station","library","airport","gym","bar"];
   return `
     <div class="add-view">
       <div class="detail-header">
         <button class="back-btn" id="backBtn">←</button>
-        <div class="detail-title">
-          <h2>Add a Bathroom</h2>
-          <p>Help others find great restrooms</p>
-        </div>
+        <div class="detail-title"><h2>Add a Bathroom</h2><p>Help others find great restrooms</p></div>
       </div>
       <div class="add-content">
         <div class="form-group">
@@ -1108,20 +763,16 @@ function renderAdd() {
         </div>
         <div class="form-group">
           <label class="form-label">Pin Location on Map</label>
-          <button class="locate-btn" id="locateBtn" ${state.locating ? "disabled" : ""}>
-            ${state.locating ? "📡 Getting location..." : "📍 Use My Current Location"}
+          <button class="locate-btn" id="locateBtn" ${state.locating?'disabled':''}>
+            ${state.locating ? '📡 Getting location...' : '📍 Use My Current Location'}
           </button>
-          ${state.newLat ? `<div class="location-note">📍 Location set (${state.newLat.toFixed(4)}, ${state.newLng.toFixed(4)})</div>` : `<div class="location-note">We'll use your GPS to place the pin. You can also skip this.</div>`}
+          ${state.newLat ? `<div class="location-note">📍 Location set (${state.newLat.toFixed(4)}, ${state.newLng.toFixed(4)})</div>` : `<div class="location-note">We'll use your GPS to place the pin.</div>`}
         </div>
         <div class="form-group">
           <label class="form-label">Tags</label>
-          <div class="tag-select">
-            ${allTags.map(tag => `
-              <button class="tag-toggle tag-${tag} ${state.newTags.includes(tag) ? 'active' : ''}" data-tag="${tag}">${tag}</button>
-            `).join("")}
-          </div>
+          <div class="tag-select">${allTags.map(tag=>`<button class="tag-toggle tag-${tag} ${state.newTags.includes(tag)?'active':''}" data-tag="${tag}">${tag}</button>`).join("")}</div>
         </div>
-        <button class="big-submit-btn" id="submitBathroomBtn" ${(!state.newName.trim() || !state.newLocation.trim()) ? "disabled" : ""}>Add Bathroom 🚽</button>
+        <button class="big-submit-btn" id="submitBathroomBtn" ${(!state.newName.trim()||!state.newLocation.trim()||state.submitting)?'disabled':''}>${state.submitting ? 'Saving...' : 'Add Bathroom 🚽'}</button>
       </div>
     </div>
   `;
@@ -1134,38 +785,20 @@ function renderAdd() {
 
 function attachHomeEvents() {
   document.getElementById("addBtn").onclick = () => { state.view = "add"; render(); };
-
-  // SEARCH INPUT — the key fix!
-  // Instead of calling render() (which rebuilds everything and loses focus),
-  // we only update the list content or map markers.
-  const searchInput = document.getElementById("searchInput");
-  searchInput.oninput = (e) => {
+  document.getElementById("searchInput").oninput = (e) => {
     state.searchQuery = e.target.value;
-    if (state.tab === "list") {
-      renderListOnly();  // Only update the list, NOT the search bar
-    } else {
-      updateMapMarkers();
-    }
+    if (state.tab === "list") renderListOnly();
+    else updateMapMarkers();
   };
-
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.onclick = () => {
-      const newTab = btn.dataset.tab;
-      if (newTab !== state.tab) {
-        if (state.tab === "map") destroyMap();
-        state.tab = newTab;
-        render();
-      }
+      const t = btn.dataset.tab;
+      if (t !== state.tab) { if (state.tab==="map") destroyMap(); state.tab = t; render(); }
     };
   });
-
   document.querySelectorAll(".sort-btn").forEach(btn => {
-    btn.onclick = () => {
-      state.sortBy = btn.dataset.sort;
-      render();
-    };
+    btn.onclick = () => { state.sortBy = btn.dataset.sort; render(); };
   });
-
   attachCardEvents();
 }
 
@@ -1190,89 +823,68 @@ window.openDetail = function(id) {
 
 function attachDetailEvents() {
   document.getElementById("backBtn").onclick = () => {
-    state.view = "home";
-    state.showReviewForm = false;
-    resetReviewForm();
-    render();
+    state.view = "home"; state.showReviewForm = false; resetReviewForm(); render();
   };
-
   document.getElementById("toggleReviewBtn").onclick = () => {
     state.showReviewForm = !state.showReviewForm;
     if (!state.showReviewForm) resetReviewForm();
     render();
   };
-
   document.querySelectorAll(".star-btn").forEach(btn => {
-    btn.onclick = () => {
-      state[btn.dataset.field] = parseInt(btn.dataset.val);
-      render();
-    };
+    btn.onclick = () => { state[btn.dataset.field] = parseInt(btn.dataset.val); render(); };
   });
-
   const nameInput = document.getElementById("reviewNameInput");
   if (nameInput) nameInput.oninput = (e) => { state.reviewName = e.target.value; };
-
   const commentInput = document.getElementById("reviewCommentInput");
   if (commentInput) commentInput.oninput = (e) => { state.reviewComment = e.target.value; };
 
-  const photoInput = document.getElementById("reviewPhotoInput");
-  if (photoInput) {
-    photoInput.onchange = (e) => {
-      Array.from(e.target.files).forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => { state.reviewPhotos.push(reader.result); render(); };
-        reader.readAsDataURL(file);
-      });
-    };
-  }
-
-  document.querySelectorAll(".photo-remove").forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      state.reviewPhotos.splice(parseInt(btn.dataset.photoIdx), 1);
-      render();
-    };
-  });
-
   const submitBtn = document.getElementById("submitReviewBtn");
   if (submitBtn) {
-    submitBtn.onclick = () => {
-      if (!state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim()) return;
-      const bathroom = state.bathrooms.find(b => b.id === state.selectedId);
-      if (bathroom) {
-        bathroom.ratings.push({
-          user: state.reviewName.trim(),
-          cleanliness: state.reviewCleanliness,
-          accessibility: state.reviewAccessibility,
-          vibe: state.reviewVibe,
-          comment: state.reviewComment.trim(),
-          date: todayStr(),
-          photos: [...state.reviewPhotos],
-        });
-        saveBathrooms();
+    submitBtn.onclick = async () => {
+      if (!state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim() || state.submitting) return;
+
+      state.submitting = true;
+      render();
+
+      const review = {
+        user: state.reviewName.trim(),
+        cleanliness: state.reviewCleanliness,
+        accessibility: state.reviewAccessibility,
+        vibe: state.reviewVibe,
+        comment: state.reviewComment.trim(),
+        date: todayStr(),
+      };
+
+      const saved = await saveReviewToDb(state.selectedId, review);
+
+      if (saved) {
+        // Add review to local state so it shows immediately
+        const bathroom = state.bathrooms.find(b => b.id === state.selectedId);
+        if (bathroom) bathroom.ratings.push({ ...review, photos: [] });
+
         state.showReviewForm = false;
         resetReviewForm();
-        showToast("Review submitted! 🎉");
-        render();
+        showToast("Review submitted! Everyone can see it now 🎉");
       }
+
+      state.submitting = false;
+      render();
     };
   }
 }
 
 function attachAddEvents() {
   document.getElementById("backBtn").onclick = () => { state.view = "home"; resetAddForm(); render(); };
-
   document.getElementById("newNameInput").oninput = (e) => { state.newName = e.target.value; updateAddButton(); };
   document.getElementById("newLocationInput").oninput = (e) => { state.newLocation = e.target.value; updateAddButton(); };
   document.getElementById("newHoursInput").oninput = (e) => { state.newHours = e.target.value; };
 
   document.getElementById("locateBtn").onclick = () => {
-    if (!navigator.geolocation) { showToast("Geolocation not supported by your browser"); return; }
-    state.locating = true;
-    render();
+    if (!navigator.geolocation) { showToast("Geolocation not supported"); return; }
+    state.locating = true; render();
     navigator.geolocation.getCurrentPosition(
       (pos) => { state.newLat = pos.coords.latitude; state.newLng = pos.coords.longitude; state.locating = false; showToast("Location captured! 📍"); render(); },
-      (err) => { state.locating = false; showToast("Couldn't get location. You can skip this step."); render(); },
+      () => { state.locating = false; showToast("Couldn't get location. You can skip this."); render(); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
@@ -1280,33 +892,44 @@ function attachAddEvents() {
   document.querySelectorAll(".tag-toggle").forEach(btn => {
     btn.onclick = () => {
       const tag = btn.dataset.tag;
-      if (state.newTags.includes(tag)) { state.newTags = state.newTags.filter(t => t !== tag); }
-      else { state.newTags.push(tag); }
+      state.newTags = state.newTags.includes(tag) ? state.newTags.filter(t=>t!==tag) : [...state.newTags, tag];
       render();
     };
   });
 
-  document.getElementById("submitBathroomBtn").onclick = () => {
-    if (!state.newName.trim() || !state.newLocation.trim()) return;
-    const newId = Math.max(0, ...state.bathrooms.map(b => b.id)) + 1;
-    const lat = state.newLat || (40.748 + (Math.random() - 0.5) * 0.03);
-    const lng = state.newLng || (-73.985 + (Math.random() - 0.5) * 0.02);
+  document.getElementById("submitBathroomBtn").onclick = async () => {
+    if (!state.newName.trim() || !state.newLocation.trim() || state.submitting) return;
 
-    state.bathrooms.push({
-      id: newId, name: state.newName.trim(), location: state.newLocation.trim(),
-      lat, lng, ratings: [], tags: [...state.newTags], hours: state.newHours.trim() || "Unknown",
+    state.submitting = true;
+    render();
+
+    const lat = state.newLat || (35.4634 + (Math.random() - 0.5) * 0.03);
+    const lng = state.newLng || (-97.5171 + (Math.random() - 0.5) * 0.02);
+
+    const saved = await saveBathroomToDb({
+      name: state.newName.trim(),
+      location: state.newLocation.trim(),
+      lat, lng,
+      tags: [...state.newTags],
+      hours: state.newHours.trim() || "Unknown",
     });
-    saveBathrooms();
-    state.view = "home";
-    resetAddForm();
-    showToast("Bathroom added! 🚽");
+
+    if (saved) {
+      // Add to local state so it shows immediately
+      state.bathrooms.push({ ...saved, tags: saved.tags || [], ratings: [] });
+      state.view = "home";
+      resetAddForm();
+      showToast("Bathroom added! Everyone can see it now 🚽");
+    }
+
+    state.submitting = false;
     render();
   };
 }
 
 function updateAddButton() {
   const btn = document.getElementById("submitBathroomBtn");
-  if (btn) btn.disabled = !state.newName.trim() || !state.newLocation.trim();
+  if (btn) btn.disabled = !state.newName.trim() || !state.newLocation.trim() || state.submitting;
 }
 
 function resetReviewForm() {
@@ -1314,7 +937,6 @@ function resetReviewForm() {
   state.reviewCleanliness = 0; state.reviewAccessibility = 0; state.reviewVibe = 0;
   state.reviewPhotos = [];
 }
-
 function resetAddForm() {
   state.newName = ""; state.newLocation = ""; state.newHours = "";
   state.newTags = []; state.newLat = null; state.newLng = null; state.locating = false;
@@ -1322,9 +944,9 @@ function resetAddForm() {
 
 
 // ============================================================================
-// START THE APP
+// START THE APP — load data from the database, then render
 // ============================================================================
-render();
+loadFromDatabase();
 
 </script>
 </body>
