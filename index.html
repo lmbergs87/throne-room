@@ -512,7 +512,7 @@ let mapMarkers = [];
 
 function initMap() {
   if (typeof L === "undefined") return;  // Leaflet not loaded yet — skip safely
-  if (leafletMap) { updateMapMarkers(); return; }
+  if (leafletMap) { updateMapMarkers(); fitMapToMarkers(); return; }
   const mapEl = document.getElementById("map");
   if (!mapEl) return;
   leafletMap = L.map("map", { zoomControl: true, attributionControl: true }).setView([40.758, -73.98], 13);
