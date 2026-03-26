@@ -339,7 +339,7 @@ const state = {
   reviewComment: "",
   reviewCleanliness: 0,
   reviewAccessibility: 0,
-  reviewVibe: 0,
+  reviewSafety: 0,
   reviewPhotos: [],
   newName: "",
   newLocation: "",
@@ -389,7 +389,7 @@ async function loadFromDatabase() {
           user: r.user_name,
           cleanliness: r.cleanliness,
           accessibility: r.accessibility,
-          vibe: r.vibe,
+          safety: r.vibe,
           comment: r.comment || "",
           date: r.date,
           photos: [],
@@ -446,7 +446,7 @@ async function saveReviewToDb(bathroomId, review) {
         user_name: review.user,
         cleanliness: review.cleanliness,
         accessibility: review.accessibility,
-        vibe: review.vibe,
+        vibe: review.safety,  // database column is still called "vibe"
         comment: review.comment,
         date: review.date,
       }),
@@ -475,7 +475,7 @@ function getAvg(ratings, field) {
 }
 function getOverallAvg(ratings) {
   if (!ratings.length) return 0;
-  return (getAvg(ratings, "cleanliness") + getAvg(ratings, "accessibility") + getAvg(ratings, "vibe")) / 3;
+  return (getAvg(ratings, "cleanliness") + getAvg(ratings, "accessibility") + getAvg(ratings, "safety")) / 3;
 }
 function getRatingColor(avg) {
   if (avg >= 4.5) return "color-green";
@@ -907,7 +907,7 @@ function renderDetail() {
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-icon">✨</div><div class="stat-value">${getAvg(b.ratings,"cleanliness").toFixed(1)}</div><div class="stat-label">Clean</div></div>
           <div class="stat-card"><div class="stat-icon">♿</div><div class="stat-value">${getAvg(b.ratings,"accessibility").toFixed(1)}</div><div class="stat-label">Accessible</div></div>
-          <div class="stat-card"><div class="stat-icon">💫</div><div class="stat-value">${getAvg(b.ratings,"vibe").toFixed(1)}</div><div class="stat-label">Vibe</div></div>
+          <div class="stat-card"><div class="stat-icon">🛡️</div><div class="stat-value">${getAvg(b.ratings,"safety").toFixed(1)}</div><div class="stat-label">Safety</div></div>
         </div>
         <div class="detail-tags">
           ${b.tags.map(t => tagHTML(t)).join("")}
@@ -929,7 +929,7 @@ function renderDetail() {
               <div class="review-scores">
                 <span>✨ ${r.cleanliness}</span>
                 <span>♿ ${r.accessibility}</span>
-                <span>💫 ${r.vibe}</span>
+                <span>🛡️ ${r.safety}</span>
               </div>
               ${r.comment ? `<p class="review-comment">${escapeHTML(r.comment)}</p>` : ""}
             </div>
@@ -946,9 +946,9 @@ function renderReviewForm() {
       <input class="form-input" id="reviewNameInput" type="text" placeholder="Your name" value="${escapeHTML(state.reviewName)}">
       <div class="star-row"><span class="star-label">Cleanliness</span><div class="star-buttons">${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=state.reviewCleanliness?'active':''}" data-field="reviewCleanliness" data-val="${s}">★</button>`).join("")}</div></div>
       <div class="star-row"><span class="star-label">Accessibility</span><div class="star-buttons">${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=state.reviewAccessibility?'active':''}" data-field="reviewAccessibility" data-val="${s}">★</button>`).join("")}</div></div>
-      <div class="star-row"><span class="star-label">Vibe</span><div class="star-buttons">${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=state.reviewVibe?'active':''}" data-field="reviewVibe" data-val="${s}">★</button>`).join("")}</div></div>
+      <div class="star-row"><span class="star-label">Safety</span><div class="star-buttons">${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=state.reviewSafety?'active':''}" data-field="reviewSafety" data-val="${s}">★</button>`).join("")}</div></div>
       <textarea class="form-input" id="reviewCommentInput" placeholder="Tell us about this bathroom...">${escapeHTML(state.reviewComment)}</textarea>
-      <button class="submit-btn" id="submitReviewBtn" ${(!state.reviewCleanliness||!state.reviewAccessibility||!state.reviewVibe||!state.reviewName.trim()||state.submitting)?'disabled':''}>${state.submitting ? 'Saving...' : 'Submit Review'}</button>
+      <button class="submit-btn" id="submitReviewBtn" ${(!state.reviewCleanliness||!state.reviewAccessibility||!state.reviewSafety||!state.reviewName.trim()||state.submitting)?'disabled':''}>${state.submitting ? 'Saving...' : 'Submit Review'}</button>
     </div>
   `;
 }
@@ -1070,7 +1070,7 @@ function attachDetailEvents() {
   const submitBtn = document.getElementById("submitReviewBtn");
   if (submitBtn) {
     submitBtn.onclick = async () => {
-      if (!state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim() || state.submitting) return;
+      if (!state.reviewCleanliness || !state.reviewAccessibility || !state.reviewSafety || !state.reviewName.trim() || state.submitting) return;
 
       state.submitting = true;
       render();
@@ -1079,7 +1079,7 @@ function attachDetailEvents() {
         user: state.reviewName.trim(),
         cleanliness: state.reviewCleanliness,
         accessibility: state.reviewAccessibility,
-        vibe: state.reviewVibe,
+        safety: state.reviewSafety,
         comment: state.reviewComment.trim(),
         date: todayStr(),
       };
@@ -1158,7 +1158,7 @@ function attachAddEvents() {
 
 function updateReviewButton() {
   const btn = document.getElementById("submitReviewBtn");
-  if (btn) btn.disabled = !state.reviewCleanliness || !state.reviewAccessibility || !state.reviewVibe || !state.reviewName.trim() || state.submitting;
+  if (btn) btn.disabled = !state.reviewCleanliness || !state.reviewAccessibility || !state.reviewSafety || !state.reviewName.trim() || state.submitting;
 }
 
 function updateAddButton() {
@@ -1168,7 +1168,7 @@ function updateAddButton() {
 
 function resetReviewForm() {
   state.reviewName = ""; state.reviewComment = "";
-  state.reviewCleanliness = 0; state.reviewAccessibility = 0; state.reviewVibe = 0;
+  state.reviewCleanliness = 0; state.reviewAccessibility = 0; state.reviewSafety = 0;
   state.reviewPhotos = [];
 }
 function resetAddForm() {
