@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Throne Room — Find & Rate Bathrooms</title>
+  <title>Throne Tracker — Find & Rate Bathrooms</title>
 
   <!-- Leaflet: Free open-source map library -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -14,7 +14,7 @@
   <!-- App icon & mobile settings -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚽</text></svg>">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Throne Room">
+  <meta name="apple-mobile-web-app-title" content="Throne Tracker">
   <meta name="theme-color" content="#6366f1">
 
   <style>
@@ -290,7 +290,7 @@
 
 <script>
 // ============================================================================
-// THRONE ROOM - Bathroom Rating App (with Supabase shared database!)
+// THRONE TRACKER - Bathroom Rating App (with Supabase shared database!)
 // ============================================================================
 // NOW WITH A REAL DATABASE!
 // All bathrooms and reviews are stored in Supabase (a cloud database).
@@ -656,7 +656,7 @@ function geoZoomTo(query) {
     try {
       const res = await fetch(
         "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(query),
-        { headers: { "User-Agent": "ThroneRoom-App" } }  // Nominatim requires a User-Agent
+        { headers: { "User-Agent": "ThroneTracker-App" } }  // Nominatim requires a User-Agent
       );
       if (!res.ok) return;
       const results = await res.json();
@@ -853,7 +853,7 @@ function renderHome() {
     <div class="header">
       <div class="header-top">
         <div>
-          <div class="app-title">🚽 Throne Room</div>
+          <div class="app-title">🚽 Throne Tracker</div>
           <div class="app-subtitle">Find & rate the best bathrooms</div>
         </div>
         <button class="add-btn" id="addBtn">+</button>
