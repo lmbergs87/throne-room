@@ -190,7 +190,17 @@
 
     .review-card { background: white; border-radius: 12px; padding: 14px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     .review-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
-    .review-user { font-size: 13px; font-weight: 600; }
+    .review-user { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 50px;
+      white-space: nowrap;
+    }
+    .badge-first-flush { background: #dbeafe; color: #1d4ed8; }
+    .badge-regular { background: #fef3c7; color: #92400e; }
+    .badge-throne-scout { background: #d1fae5; color: #065f46; }
+    .badge-royal-inspector { background: #ede9fe; color: #5b21b6; }
+    .badge-porcelain-pioneer { background: #fce7f3; color: #9d174d; }
     .review-date { font-size: 11px; color: #94a3b8; }
     .review-scores { display: flex; gap: 10px; font-size: 11px; color: #64748b; margin-bottom: 6px; }
     .review-comment { font-size: 13px; color: #334155; line-height: 1.5; }
@@ -247,6 +257,24 @@
     .toast.show { opacity: 1; }
 
     .result-count { font-size: 11px; color: #94a3b8; padding: 0 0 8px; }
+
+    /* Updates tab */
+    .updates-container { padding: 12px; }
+    .updates-header { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .update-card {
+      background: white; border-radius: 16px; padding: 16px; margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #6366f1;
+    }
+    .update-date { font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 4px; }
+    .update-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .update-body { font-size: 13px; color: #475569; line-height: 1.5; }
+    .update-tag {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 50px; margin-top: 8px;
+    }
+    .update-tag-feature { background: #dbeafe; color: #1d4ed8; }
+    .update-tag-improvement { background: #d1fae5; color: #065f46; }
+    .update-tag-launch { background: #ede9fe; color: #5b21b6; }
 
     /* Near Me button — floats over the map */
     .near-me-btn {
@@ -582,6 +610,106 @@ function showToast(message) {
 }
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
+// ============================================================================
+// BADGES — Gamification to encourage more reviews!
+// ============================================================================
+// Badges are earned based on how many reviews a person has written.
+// We count reviews by matching the reviewer's name across all bathrooms.
+// The highest earned badge is displayed next to the reviewer's name.
+
+const BADGES = [
+  { name: "Porcelain Pioneer", icon: "\uD83D\uDC51", min: 50, css: "porcelain-pioneer" },
+  { name: "Royal Inspector", icon: "\uD83D\uDEBF", min: 25, css: "royal-inspector" },
+  { name: "Throne Scout", icon: "\uD83E\uDEA0", min: 10, css: "throne-scout" },
+  { name: "Regular", icon: "\uD83D\uDEBD", min: 5, css: "regular" },
+  { name: "First Flush", icon: "\uD83E\uDDFB", min: 1, css: "first-flush" },
+];
+
+// Count how many total reviews a person has written (by name)
+function getReviewCount(userName) {
+  const name = userName.toLowerCase().trim();
+  let count = 0;
+  state.bathrooms.forEach(b => {
+    b.ratings.forEach(r => {
+      if (r.user.toLowerCase().trim() === name) count++;
+    });
+  });
+  return count;
+}
+
+// Get the highest badge earned by a reviewer
+function getBadge(userName) {
+  const count = getReviewCount(userName);
+  for (const badge of BADGES) {
+    if (count >= badge.min) return badge;
+  }
+  return null;
+}
+
+// Render a badge as HTML
+function badgeHTML(userName) {
+  const badge = getBadge(userName);
+  if (!badge) return "";
+  return `<span class="badge badge-${badge.css}">${badge.icon} ${badge.name}</span>`;
+}
+
+
+// ============================================================================
+// APP UPDATES — A simple changelog so users know what's new!
+// ============================================================================
+// Just add a new entry to the top of this array whenever you ship something.
+// Each entry has a date, title, description, and a tag (feature/improvement/launch).
+
+const APP_UPDATES = [
+  {
+    date: "March 26, 2026",
+    title: "\uD83C\uDFC6 Badges Are Here!",
+    body: "Earn badges by writing reviews! Start with \uD83E\uDDFB First Flush on your 1st review and work your way up to \uD83D\uDC51 Porcelain Pioneer at 50 reviews. Your highest badge shows on every review you write.",
+    tag: "feature",
+  },
+  {
+    date: "March 26, 2026",
+    title: "\uD83D\uDCA9 Poop Emoji Ratings",
+    body: "Stars are boring. Ratings now use poop emojis because, well, it's a bathroom app. The more poops, the better the bathroom!",
+    tag: "improvement",
+  },
+  {
+    date: "March 26, 2026",
+    title: "\uD83D\uDCCD Near Me GPS",
+    body: "Tap the Near Me button on the map to find bathrooms close to your current location. Works great when traveling in an unfamiliar area!",
+    tag: "feature",
+  },
+  {
+    date: "March 26, 2026",
+    title: "\uD83D\uDD0D Smarter Search",
+    body: "Search now understands abbreviations and nicknames. Type \"OKC\" and you'll find Oklahoma City bathrooms. Works for NYC, LA, SF, and many more.",
+    tag: "improvement",
+  },
+  {
+    date: "March 26, 2026",
+    title: "\uD83D\uDE80 Throne Tracker Launched!",
+    body: "Welcome to Throne Tracker! Find, rate, and review bathrooms wherever you go. We launched with 27 bathrooms across 10 major U.S. cities. Add your own and help others find the best thrones!",
+    tag: "launch",
+  },
+];
+
+function renderUpdates() {
+  const tagLabels = { feature: "New Feature", improvement: "Improvement", launch: "Launch" };
+  return `
+    <div class="updates-container">
+      <div class="updates-header">\uD83D\uDCE3 What's New</div>
+      ${APP_UPDATES.map(u => `
+        <div class="update-card">
+          <div class="update-date">${escapeHTML(u.date)}</div>
+          <div class="update-title">${escapeHTML(u.title)}</div>
+          <div class="update-body">${escapeHTML(u.body)}</div>
+          <span class="update-tag update-tag-${u.tag}">${tagLabels[u.tag] || u.tag}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 
 // ============================================================================
 // MAP
@@ -859,19 +987,20 @@ function renderHome() {
         </div>
         <button class="add-btn" id="addBtn">+</button>
       </div>
-      <div class="search-wrap">
+      ${state.tab !== 'updates' ? `<div class="search-wrap">
         <span class="search-icon">🔍</span>
         <input class="search-input" id="searchInput" type="text" placeholder="Search bathrooms, locations, tags..." value="${escapeHTML(state.searchQuery)}">
-      </div>
+      </div>` : ''}
       <div class="tabs">
         <button class="tab-btn ${state.tab === 'map' ? 'active' : ''}" data-tab="map">📍 Map</button>
         <button class="tab-btn ${state.tab === 'list' ? 'active' : ''}" data-tab="list">📋 List</button>
+        <button class="tab-btn ${state.tab === 'updates' ? 'active' : ''}" data-tab="updates">📢 Updates</button>
       </div>
     </div>
     <div class="content">
       ${state.tab === "map" ? `
         <div class="map-container" style="position:relative"><div class="map-wrap"><div id="map"></div></div><button class="near-me-btn" id="nearMeBtn">${state.locatingNearMe ? '<span class="pulse"></span> Locating...' : '📍 Near Me'}</button></div>
-      ` : `
+      ` : state.tab === "list" ? `
         <div class="list-container">
           <div class="sort-bar">
             Sort by:
@@ -881,6 +1010,8 @@ function renderHome() {
           </div>
           <div id="listContent">${renderListCards(getFiltered())}</div>
         </div>
+      ` : `
+        ${renderUpdates()}
       `}
     </div>
   `;
@@ -923,7 +1054,7 @@ function renderDetail() {
           ${b.ratings.slice().reverse().map(r => `
             <div class="review-card">
               <div class="review-top">
-                <span class="review-user">${escapeHTML(r.user)}</span>
+                <span class="review-user">${escapeHTML(r.user)} ${badgeHTML(r.user)}</span>
                 <span class="review-date">${r.date}</span>
               </div>
               <div class="review-scores">
@@ -998,14 +1129,12 @@ function renderAdd() {
 
 function attachHomeEvents() {
   document.getElementById("addBtn").onclick = () => { state.view = "add"; render(); };
-  document.getElementById("searchInput").oninput = (e) => {
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) searchInput.oninput = (e) => {
     state.searchQuery = e.target.value;
     if (state.tab === "list") renderListOnly();
     else {
       updateMapMarkers();
-      // If the user typed something, zoom the map to that geographic area
-      // (e.g. "Oklahoma" zooms to the state, "Chicago" zooms to the city)
-      // If search is cleared, zoom out to show all markers
       if (state.searchQuery.trim()) {
         geoZoomTo(state.searchQuery);
       } else {
@@ -1087,13 +1216,23 @@ function attachDetailEvents() {
       const saved = await saveReviewToDb(state.selectedId, review);
 
       if (saved) {
+        // Check badge BEFORE adding the review so we can detect a new badge
+        const oldBadge = getBadge(review.user);
+
         // Add review to local state so it shows immediately
         const bathroom = state.bathrooms.find(b => b.id === state.selectedId);
         if (bathroom) bathroom.ratings.push({ ...review, photos: [] });
 
+        // Check if they earned a new badge with this review!
+        const newBadge = getBadge(review.user);
+        if (newBadge && (!oldBadge || newBadge.name !== oldBadge.name)) {
+          showToast(`Badge earned: ${newBadge.icon} ${newBadge.name}!`);
+        } else {
+          showToast("Review submitted! Everyone can see it now \uD83C\uDF89");
+        }
+
         state.showReviewForm = false;
         resetReviewForm();
-        showToast("Review submitted! Everyone can see it now 🎉");
       }
 
       state.submitting = false;
